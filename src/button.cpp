@@ -58,8 +58,8 @@ bool Button::mouse_button_event(const Vector2i &p, int button, bool down, int mo
     ref<Button> self = this;
 
     if (m_enabled == 1 &&
-        ((button == GLFW_MOUSE_BUTTON_1 && !(m_flags & MenuButton)) ||
-         (button == GLFW_MOUSE_BUTTON_2 &&  (m_flags & MenuButton)))) {
+        ((button == NGUI_MOUSE_BUTTON_1 && !(m_flags & MenuButton)) ||
+         (button == NGUI_MOUSE_BUTTON_2 &&  (m_flags & MenuButton)))) {
         bool pushed_backup = m_pushed;
         if (down) {
             if (m_flags & RadioButton) {

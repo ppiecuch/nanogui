@@ -17,8 +17,26 @@
 #include <nanogui/textbox.h>
 #include <nanogui/opengl.h>
 #include <nanogui/theme.h>
+#include <string>
 #include <regex>
 #include <iostream>
+
+
+#ifdef QT_GUI_LIB
+
+#include <qclipboard.h>
+#include <qguiapplication.h>
+
+void qtSetClipboardString(const char *string) {
+    QGuiApplication::clipboard()->setText(string);
+}
+
+const char *qtGetClipboardString() {
+    QString text =  QGuiApplication::clipboard()->text();
+    return text.toUtf8().constData();
+}
+
+#endif
 
 NAMESPACE_BEGIN(nanogui)
 
@@ -288,7 +306,7 @@ bool TextBox::mouse_enter_event(const Vector2i &p, bool enter) {
 bool TextBox::mouse_button_event(const Vector2i &p, int button, bool down,
                                  int modifiers) {
 
-    if (button == GLFW_MOUSE_BUTTON_1 && down && !m_focused) {
+    if (button == NGUI_MOUSE_BUTTON_1 && down && !m_focused) {
         if (!m_spinnable || spin_area(p) == SpinArea::None) /* not on scrolling arrows */
             request_focus();
     }
@@ -298,7 +316,7 @@ bool TextBox::mouse_button_event(const Vector2i &p, int button, bool down,
             m_mouse_down_pos = p;
             m_mouse_down_modifier = modifiers;
 
-            double time = glfwGetTime();
+            double time = sysGetTime();
             if (time - m_last_click < 0.25) {
                 /* Double-click: select all text */
                 m_selection_pos = 0;
@@ -317,7 +335,7 @@ bool TextBox::mouse_button_event(const Vector2i &p, int button, bool down,
                 m_mouse_down_pos = p;
                 m_mouse_down_modifier = modifiers;
 
-                double time = glfwGetTime();
+                double time = sysGetTime();
                 if (time - m_last_click < 0.25) {
                     /* Double-click: reset to default value */
                     m_value = m_default_value;
@@ -401,9 +419,9 @@ bool TextBox::focus_event(bool focused) {
 
 bool TextBox::keyboard_event(int key, int /* scancode */, int action, int modifiers) {
     if (m_editable && focused()) {
-        if (action == GLFW_PRESS || action == GLFW_REPEAT) {
-            if (key == GLFW_KEY_LEFT) {
-                if (modifiers == GLFW_MOD_SHIFT) {
+        if (action == NGUI_PRESS || action == NGUI_REPEAT) {
+            if (key == NGUI_KEY_LEFT) {
+                if (modifiers == NGUI_MOD_SHIFT) {
                     if (m_selection_pos == -1)
                         m_selection_pos = m_cursor_pos;
                 } else {
@@ -412,8 +430,8 @@ bool TextBox::keyboard_event(int key, int /* scancode */, int action, int modifi
 
                 if (m_cursor_pos > 0)
                     m_cursor_pos--;
-            } else if (key == GLFW_KEY_RIGHT) {
-                if (modifiers == GLFW_MOD_SHIFT) {
+            } else if (key == NGUI_KEY_RIGHT) {
+                if (modifiers == NGUI_MOD_SHIFT) {
                     if (m_selection_pos == -1)
                         m_selection_pos = m_cursor_pos;
                 } else {
@@ -422,8 +440,8 @@ bool TextBox::keyboard_event(int key, int /* scancode */, int action, int modifi
 
                 if (m_cursor_pos < (int) m_value_temp.length())
                     m_cursor_pos++;
-            } else if (key == GLFW_KEY_HOME) {
-                if (modifiers == GLFW_MOD_SHIFT) {
+            } else if (key == NGUI_KEY_HOME) {
+                if (modifiers == NGUI_MOD_SHIFT) {
                     if (m_selection_pos == -1)
                         m_selection_pos = m_cursor_pos;
                 } else {
@@ -431,8 +449,8 @@ bool TextBox::keyboard_event(int key, int /* scancode */, int action, int modifi
                 }
 
                 m_cursor_pos = 0;
-            } else if (key == GLFW_KEY_END) {
-                if (modifiers == GLFW_MOD_SHIFT) {
+            } else if (key == NGUI_KEY_END) {
+                if (modifiers == NGUI_MOD_SHIFT) {
                     if (m_selection_pos == -1)
                         m_selection_pos = m_cursor_pos;
                 } else {
@@ -440,30 +458,30 @@ bool TextBox::keyboard_event(int key, int /* scancode */, int action, int modifi
                 }
 
                 m_cursor_pos = (int) m_value_temp.size();
-            } else if (key == GLFW_KEY_BACKSPACE) {
+            } else if (key == NGUI_KEY_BACKSPACE) {
                 if (!delete_selection()) {
                     if (m_cursor_pos > 0) {
                         m_value_temp.erase(m_value_temp.begin() + m_cursor_pos - 1);
                         m_cursor_pos--;
                     }
                 }
-            } else if (key == GLFW_KEY_DELETE) {
+            } else if (key == NGUI_KEY_DELETE) {
                 if (!delete_selection()) {
                     if (m_cursor_pos < (int) m_value_temp.length())
                         m_value_temp.erase(m_value_temp.begin() + m_cursor_pos);
                 }
-            } else if (key == GLFW_KEY_ENTER) {
+            } else if (key == NGUI_KEY_ENTER) {
                 if (!m_committed)
                     focus_event(false);
-            } else if (key == GLFW_KEY_A && modifiers == SYSTEM_COMMAND_MOD) {
+            } else if (key == NGUI_KEY_A && modifiers == SYSTEM_COMMAND_MOD) {
                 m_cursor_pos = (int) m_value_temp.length();
                 m_selection_pos = 0;
-            } else if (key == GLFW_KEY_X && modifiers == SYSTEM_COMMAND_MOD) {
+            } else if (key == NGUI_KEY_X && modifiers == SYSTEM_COMMAND_MOD) {
                 copy_selection();
                 delete_selection();
-            } else if (key == GLFW_KEY_C && modifiers == SYSTEM_COMMAND_MOD) {
+            } else if (key == NGUI_KEY_C && modifiers == SYSTEM_COMMAND_MOD) {
                 copy_selection();
-            } else if (key == GLFW_KEY_V && modifiers == SYSTEM_COMMAND_MOD) {
+            } else if (key == NGUI_KEY_V && modifiers == SYSTEM_COMMAND_MOD) {
                 delete_selection();
                 paste_from_clipboard();
             }
@@ -523,8 +541,12 @@ bool TextBox::copy_selection() {
         if (begin > end)
             std::swap(begin, end);
 
+#ifdef QT_GUI_LIB
+        qtSetClipboardString(m_value_temp.substr(begin, end).c_str());
+#else
         glfwSetClipboardString(sc->glfw_window(),
                                m_value_temp.substr(begin, end).c_str());
+#endif
         return true;
     }
 
@@ -535,7 +557,11 @@ void TextBox::paste_from_clipboard() {
     Screen *sc = screen();
     if (!sc)
         return;
+#ifdef QT_GUI_LIB
+    const char* cbstr = qtGetClipboardString();
+#else
     const char* cbstr = glfwGetClipboardString(sc->glfw_window());
+#endif
     if (cbstr)
         m_value_temp.insert(m_cursor_pos, std::string(cbstr));
 }
@@ -566,7 +592,7 @@ void TextBox::update_cursor(NVGcontext *, float lastx,
                            const NVGglyphPosition *glyphs, int size) {
     // handle mouse cursor events
     if (m_mouse_down_pos.x() != -1) {
-        if (m_mouse_down_modifier == GLFW_MOD_SHIFT) {
+        if (m_mouse_down_modifier == NGUI_MOD_SHIFT) {
             if (m_selection_pos == -1)
                 m_selection_pos = m_cursor_pos;
         } else

@@ -22,6 +22,8 @@ NAMESPACE_BEGIN(nanogui)
 
 class NANOGUI_EXPORT Texture : public Object {
 public:
+    /// Pixel component size
+    typedef DataType ComponentFormat;
     /// Overall format of the texture (e.g. luminance-only or RGBA)
     enum class PixelFormat : uint8_t {
         /// Single-channel bitmap
@@ -47,21 +49,6 @@ public:
 
         /// Combined depth + stencil map
         DepthStencil
-    };
-
-    /// Number format of pixel components
-    enum class ComponentFormat : uint8_t {
-        // Signed and unsigned integer formats
-        UInt8   = (uint8_t) enoki::EnokiType::UInt8,
-        Int8    = (uint8_t) enoki::EnokiType::Int8,
-        UInt16  = (uint8_t) enoki::EnokiType::UInt16,
-        Int16   = (uint8_t) enoki::EnokiType::Int16,
-        UInt32  = (uint8_t) enoki::EnokiType::UInt32,
-        Int32   = (uint8_t) enoki::EnokiType::Int32,
-
-        // Floating point formats
-        Float16 = (uint8_t) enoki::EnokiType::Float16,
-        Float32 = (uint8_t) enoki::EnokiType::Float32
     };
 
     /// Texture interpolation mode

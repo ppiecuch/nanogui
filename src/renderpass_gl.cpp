@@ -270,6 +270,8 @@ void RenderPass::set_viewport(const Vector2i &offset, const Vector2i &size) {
 
     if (m_active) {
         int ypos = m_framebuffer_size.y() - m_viewport_size.y() - m_viewport_offset.y();
+        if(m_viewport_size.x() == -1)
+            assert(false);
         CHK(glViewport(m_viewport_offset.x(), ypos,
                        m_viewport_size.x(), m_viewport_size.y()));
         CHK(glScissor(m_viewport_offset.x(), ypos,

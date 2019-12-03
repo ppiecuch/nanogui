@@ -1,0 +1,16 @@
+<RCC>
+  <qresource>
+    <file>../resources/FontAwesome-Solid.ttf</file>
+    <file>../resources/Roboto-Bold.ttf</file>
+    <file>../resources/Roboto-Regular.ttf</file>
+    <file>../resources/icons/icon1.png</file>
+    <file>../resources/icons/icon2.png</file>
+    <file>../resources/icons/icon3.png</file>
+    <file>../resources/icons/icon4.png</file>
+    <file>../resources/icons/icon5.png</file>
+    <file>../resources/icons/icon6.ico</file>
+    <file>../resources/icons/icon6.png</file>
+    <file>../resources/icons/icon7.png</file>
+    <file>../resources/icons/icon8.png</file>
+  </qresource>
+</RCC>

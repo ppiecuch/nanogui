@@ -11,6 +11,7 @@
     BSD-style license that can be found in the LICENSE.txt file.
 */
 
+#include <nanogui/common.h>
 #include <nanogui/opengl.h>
 #include <nanogui/screen.h>
 #include <nanogui/window.h>
@@ -36,8 +37,11 @@
 #include <nanogui/texture.h>
 #include <nanogui/shader.h>
 #include <nanogui/renderpass.h>
-#include <enoki/transform.h>
 #include <stb_image.h>
+
+#ifdef QT_GUI_LIB
+# include <qtapp.h>
+#endif
 
 using namespace nanogui;
 
@@ -127,7 +131,9 @@ public:
             dlg->set_callback([](int result) { std::cout << "Dialog result: " << result << std::endl; });
         });
 
-#if defined(_WIN32)
+#if defined(QT_CORE_LIB)
+        std::string resources_folder_path(":/resources/icons");
+#elif defined(_WIN32)
         /// Executable is in the Debug/Release/.. subdirectory
         std::string resources_folder_path("../icons");
 #else
@@ -467,7 +473,9 @@ public:
             })"
 #elif defined(NANOGUI_USE_GLES)
             R"(/* Vertex shader */
-            precision highp float;
+            #ifdef GL_ES
+             precision highp float;
+            #endif
             uniform mat4 mvp;
             attribute vec3 position;
             void main() {
@@ -475,7 +483,10 @@ public:
             })",
 
             /* Fragment shader */
-            R"(precision highp float;
+            R"(/* Fragment shader */
+            #ifdef GL_ES
+             precision highp float;
+            #endif
             uniform float intensity;
             void main() {
                 gl_FragColor = vec4(vec3(intensity), 1.0);
@@ -514,15 +525,15 @@ public:
             -1.f, 1.f, 0.f
         };
 
-        m_shader->set_buffer("indices", enoki::EnokiType::UInt32, 1, {3*2, 1, 1}, indices);
-        m_shader->set_buffer("position", enoki::EnokiType::Float32, 2, {4, 3, 1}, positions);
+        m_shader->set_buffer("indices", DataType::UInt32, 1, {3*2, 1, 1}, indices);
+        m_shader->set_buffer("position", DataType::Float32, 2, {4, 3, 1}, positions);
         m_shader->set_uniform("intensity", 0.5f);
     }
 
     virtual bool keyboard_event(int key, int scancode, int action, int modifiers) {
         if (Screen::keyboard_event(key, scancode, action, modifiers))
             return true;
-        if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+        if (key == NGUI_KEY_ESCAPE && action == NGUI_PRESS) {
             set_visible(false);
             return true;
         }
@@ -531,16 +542,16 @@ public:
 
     virtual void draw(NVGcontext *ctx) {
         /* Animate the scrollbar */
-        m_progress->set_value(std::fmod((float) glfwGetTime() / 10, 1.0f));
+        m_progress->set_value(std::fmod((float) sysGetTime() / 10, 1.0f));
 
         /* Draw the user interface */
         Screen::draw(ctx);
     }
 
     virtual void draw_contents() {
-        Matrix4f mvp = enoki::scale<Matrix4f>(Vector3f(
+        Matrix4f mvp = nutils::scale<Matrix4f>(Vector3f(
                            (float) m_size.y() / (float) m_size.x() * 0.25f, 0.25f, 0.25f)) *
-                       enoki::rotate<Matrix4f>(Vector3f(0, 0, 1), (float) glfwGetTime());
+                       nutils::rotate<Matrix4f>(Vector3f(0, 0, 1), (float) sysGetTime());
 
         m_shader->set_uniform("mvp", mvp);
 
@@ -563,7 +574,10 @@ private:
     int m_current_image;
 };
 
-int main(int /* argc */, char ** /* argv */) {
+int main(int argc, char **argv) {
+#if defined(QT_GUI_LIB)
+    QNGuiApplication app(argc, argv);
+#endif
     try {
         nanogui::init();
 

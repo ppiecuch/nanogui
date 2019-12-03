@@ -28,7 +28,7 @@ bool CheckBox::mouse_button_event(const Vector2i &p, int button, bool down,
     if (!m_enabled)
         return false;
 
-    if (button == GLFW_MOUSE_BUTTON_1) {
+    if (button == NGUI_MOUSE_BUTTON_1) {
         if (down) {
             m_pushed = true;
         } else if (m_pushed) {

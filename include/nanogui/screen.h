@@ -17,6 +17,29 @@
 #include <nanogui/widget.h>
 #include <nanogui/texture.h>
 
+#ifdef QT_GUI_LIB
+class QWindow;
+
+#include <qobject.h>
+#include <qelapsedtimer.h>
+
+class QtDispatch : public QObject {
+    Q_OBJECT
+    bool m_closed = false;
+public:
+    void emitRequestResize(int w, int h) { Q_EMIT requestResize(w, h); }
+    void emitRequestUpdate() { Q_EMIT requestUpdate(); }
+public Q_SLOTS:
+    void changeShouldClose(bool state) { m_closed = state; }
+Q_SIGNALS:
+    void requestUpdate();
+    void requestResize(int,int);
+public:
+    bool isClosed() const { return m_closed; }
+};
+#endif // QT_GUI_LIB
+
+
 NAMESPACE_BEGIN(nanogui)
 
 class Texture;
@@ -24,12 +47,16 @@ class Texture;
 /**
  * \class Screen screen.h nanogui/screen.h
  *
- * \brief Represents a display surface (i.e. a full-screen or windowed GLFW window)
+ * \brief Represents a display surface (i.e. a full-screen or windowed GLFW/Qt window)
  * and forms the root element of a hierarchy of nanogui widgets.
  */
-class NANOGUI_EXPORT Screen : public Widget {
+class NANOGUI_EXPORT Screen : public Widget
+  {
     friend class Widget;
     friend class Window;
+#ifdef QT_GUI_LIB
+    friend class QtDispatch;
+#endif
 public:
     /**
      * Create a new Screen instance
@@ -122,6 +149,11 @@ public:
     /// Calls clear() and draws the window contents --- put your rendering code here.
     virtual void draw_contents();
 
+# ifdef QT_GUI_LIB
+    /// Draw the Screen contents immediatly
+    virtual void draw_now();
+# endif
+
     /// Return the ratio between pixel and device coordinates (e.g. >= 2 on Mac Retina displays)
     float pixel_ratio() const { return m_pixel_ratio; }
 
@@ -148,8 +180,13 @@ public:
     /// Return the last observed mouse position value
     Vector2i mouse_pos() const { return m_mouse_pos; }
 
+#ifdef QT_GUI_LIB
+    /// Return a pointer to the underlying GLFW window data structure
+    QWindow *qt_window() const { return m_qt_window; }
+#else
     /// Return a pointer to the underlying GLFW window data structure
     GLFWwindow *glfw_window() const { return m_glfw_window; }
+#endif
 
     /// Return a pointer to the underlying NanoVG draw context
     NVGcontext *nvg_context() const { return m_nvg_context; }
@@ -183,9 +220,21 @@ public:
     /// Flush all queued up NanoVG rendering commands
     void nvg_flush();
 
+#ifdef QT_GUI_LIB
+    void set_shutdown_qt(bool v) { m_shutdown_qt = v; }
+    bool shutdown_qt() { return m_shutdown_qt; }
+#else
     /// Shut down GLFW when the window is closed?
     void set_shutdown_glfw(bool v) { m_shutdown_glfw = v; }
     bool shutdown_glfw() { return m_shutdown_glfw; }
+#endif
+    bool window_should_close() {
+#ifdef QT_GUI_LIB
+        return shutdown_qt();
+#else
+        return shutdown_glfw()
+#endif
+    }
 
     /// Is a tooltip currently fading in?
     bool tooltip_fade_in_progress() const;
@@ -198,16 +247,16 @@ public:
     }
 
 public:
-    /********* API for applications which manage GLFW themselves *********/
+    /********* API for applications which manage GLFW/Qt themselves *********/
 
     /**
      * \brief Default constructor
      *
      * Performs no initialization at all. Use this if the application is
-     * responsible for setting up GLFW, OpenGL, etc.
+     * responsible for setting up GLFW/Qt, OpenGL, etc.
      *
      * In this case, override \ref Screen and call \ref initalize() with a
-     * pointer to an existing \c GLFWwindow instance
+     * pointer to an existing \c GLFWwindow/QWindow instance
      *
      * You will also be responsible in this case to deliver GLFW callbacks
      * to the appropriate callback event handlers below
@@ -215,7 +264,11 @@ public:
     Screen();
 
     /// Initialize the \ref Screen
+#ifdef QT_GUI_LIB
+    void initialize(QWindow *window, bool shutdown_window);
+#else
     void initialize(GLFWwindow *window, bool shutdown_glfw);
+#endif
 
     /* Event handlers */
     void cursor_pos_callback_event(double x, double y);
@@ -233,11 +286,24 @@ public:
     void move_window_to_front(Window *window);
     void draw_widgets();
 
+    /// Get sys/elapsed time
+    double sys_get_time() const;
+
+#ifdef QT_GUI_LIB
+    QtDispatch *qdispatch() { return m_qt_dispatch; }
+protected:
+    QtDispatch *m_qt_dispatch = nullptr;
+    QWindow *m_qt_window = nullptr;
+    QElapsedTimer m_timer;
+    bool m_shutdown_qt;
+#else
 protected:
     GLFWwindow *m_glfw_window = nullptr;
-    NVGcontext *m_nvg_context = nullptr;
     GLFWcursor *m_cursors[(size_t) Cursor::CursorCount];
+    bool m_shutdown_glfw;
+#endif
     Cursor m_cursor;
+    NVGcontext *m_nvg_context = nullptr;
     std::vector<Widget *> m_focus_path;
     Vector2i m_fbsize;
     float m_pixel_ratio;
@@ -249,7 +315,6 @@ protected:
     bool m_process_events = true;
     Color m_background;
     std::string m_caption;
-    bool m_shutdown_glfw;
     bool m_fullscreen;
     bool m_depth_buffer;
     bool m_stencil_buffer;

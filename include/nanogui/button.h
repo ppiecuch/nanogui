@@ -155,4 +155,39 @@ protected:
     std::vector<Button *> m_button_group;
 };
 
+
+/**
+ * \class LedButton button.h nanogui/button.h
+ *
+ * \brief Led-like button widget.
+ */
+class NANOGUI_EXPORT LedButton : public Button
+{
+public:
+
+    /// The visual style for led.
+    enum Mode {
+        CircleCustom=0,
+        RectCustom,
+        TriangleCustom,
+        RoundrectCustom,
+        CircleBlack,
+        CircleBlue,
+        CircleGreen,
+        CircleGray,
+        CircleOrange,
+        CircleRed,
+        CircleYellow,
+        CirclePurple
+    };
+
+    LedButton(Widget* parent, Mode mode = CircleBlack, int w = 40, int h = 40);
+
+    void draw(NVGcontext* ctx) override;
+    void setMode(Mode mode) { m_mode = mode; }
+
+private:
+    Mode m_mode = CircleBlack;
+};
+
 NAMESPACE_END(nanogui)

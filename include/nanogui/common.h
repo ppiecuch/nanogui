@@ -14,10 +14,22 @@
 
 #pragma once
 
-#include <enoki/array.h>
+#if defined(WITH_ENOKI_LIB)
+# include <enoki/array.h>
+# include <enoki/transform.h>
+#elif defined(WITH_EIGEN_LIB)
+# include <Eigen/Core>
+#else
+# define WITH_LINALG_LIB
+# include <algebra/linalg.h>
+#endif
 #include <stdint.h>
 #include <array>
 #include <vector>
+
+#ifdef QT_GUI_LIB
+# include <qnamespace.h>
+#endif
 
 /* Set to 1 to draw boxes around widgets */
 //#define NANOGUI_SHOW_WIDGET_BOUNDS 1
@@ -112,17 +124,131 @@ struct GLFWcursor;
 
 #endif // DOXYGEN_SHOULD_SKIP_THIS
 
+#ifdef QT_GUI_LIB
+
+ enum NguiFlag {
+    NGUI_MOUSE_BUTTON_1 = 1,
+    NGUI_MOUSE_BUTTON_LEFT = NGUI_MOUSE_BUTTON_1,
+    NGUI_MOUSE_BUTTON_2 = 2,
+    NGUI_MOUSE_BUTTON_RIGHT = NGUI_MOUSE_BUTTON_2,
+    NGUI_MOUSE_BUTTON_3 = 4,
+    NGUI_MOUSE_BUTTON_MIDDLE = NGUI_MOUSE_BUTTON_3,
+    NGUI_KEY_ESCAPE = Qt::Key_Escape,
+    NGUI_KEY_LEFT = Qt::Key_Left,
+    NGUI_KEY_RIGHT = Qt::Key_Right,
+    NGUI_KEY_UP = Qt::Key_Up,
+    NGUI_KEY_DOWN = Qt::Key_Down,
+    NGUI_KEY_HOME = Qt::Key_Home,
+    NGUI_KEY_END = Qt::Key_End,
+    NGUI_KEY_BACKSPACE = Qt::Key_Backspace,
+    NGUI_KEY_DELETE = Qt::Key_Delete,
+    NGUI_KEY_ENTER = Qt::Key_Enter,
+    NGUI_KEY_A = Qt::Key_A,
+    NGUI_KEY_X = Qt::Key_X,
+    NGUI_KEY_C = Qt::Key_C,
+    NGUI_KEY_V = Qt::Key_V,
+    NGUI_KEY_R = Qt::Key_R,
+    NGUI_MOD_SHIFT,
+    NGUI_MOD_CONTROL,
+    NGUI_MOD_SUPER,
+    NGUI_SYSTEM_COMMAND_MOD,
+    NGUI_PRESS = 0,
+    NGUI_RELEASE = 1,
+    NGUI_REPEAT = 2
+ };
+
+#else
+
+ enum NguiFlag {
+    NGUI_MOUSE_BUTTON_1 = GLFW_MOUSE_BUTTON_1,
+    NGUI_MOUSE_BUTTON_LEFT = GLFW_MOUSE_BUTTON_LEFT,
+    NGUI_MOUSE_BUTTON_2 = GLFW_MOUSE_BUTTON_2,
+    NGUI_MOUSE_BUTTON_RIGHT = GLFW_MOUSE_BUTTON_RIGHT,
+    NGUI_MOUSE_BUTTON_3 = GLFW_MOUSE_BUTTON_3,
+    NGUI_MOUSE_BUTTON_MIDDLE = GLFW_MOUSE_BUTTON_MIDDLE,
+    NGUI_KEY_ESCAPE = GLFW_KEY_ESCAPE,
+    NGUI_KEY_LEFT = GLFW_KEY_LEFT,
+    NGUI_KEY_RIGHT = GLFW_KEY_RIGHT,
+    NGUI_KEY_UP = GLFW_KEY_UP,
+    NGUI_KEY_DOWN = GLFW_KEY_DOWN,
+    NGUI_KEY_HOME = GLFW_KEY_HOME,
+    NGUI_KEY_END = GLFW_KEY_END,
+    NGUI_KEY_BACKSPACE = GLFW_KEY_BACKSPACE,
+    NGUI_KEY_DELETE = GLFW_KEY_DELETE,
+    NGUI_KEY_ENTER = GLFW_KEY_ENTER,
+    NGUI_KEY_A = GLFW_KEY_A,
+    NGUI_KEY_X = GLFW_KEY_X,
+    NGUI_KEY_C = GLFW_KEY_C,
+    NGUI_KEY_V = GLFW_KEY_V,
+    NGUI_KEY_R = GLFW_KEY_R = GLFW_KEY_R,
+    NGUI_MOD_SHIFT = GLFW_KEY_SHIFT,
+    NGUI_MOD_CONTROL = GLFW_KEY_CONTROL,
+    NGUI_MOD_SUPER = GLFW_KEY_SUPER,
+    NGUI_SYSTEM_COMMAND_MOD = GLFW_SYSTEM_COMMAND_MOD,
+    NGUI_PRESS = GLFW_PRESS,
+    NGUI_RELEASE = GLFW_RELEASE,
+    NGUI_REPEAT = GLFW_REPEAT
+ };
+
+#endif
+
 // Define command key for windows/mac/linux
 #if defined(__APPLE__) || defined(DOXYGEN_DOCUMENTATION_BUILD)
-    /// If on OSX, maps to ``GLFW_MOD_SUPER``.  Otherwise, maps to ``GLFW_MOD_CONTROL``.
-    #define SYSTEM_COMMAND_MOD GLFW_MOD_SUPER
+    /// If on OSX, maps to ``NGUI_MOD_SUPER``.  Otherwise, maps to ``NGUI_MOD_CONTROL``.
+    #define SYSTEM_COMMAND_MOD NGUI_MOD_SUPER
 #else
-    #define SYSTEM_COMMAND_MOD GLFW_MOD_CONTROL
+    #define SYSTEM_COMMAND_MOD NGUI_MOD_CONTROL
+#endif
+
+#ifdef QT_GUI_LIB
+    double sysGetTime();
+#else
+    #define sysGetTime glfwGetTime
 #endif
 
 NAMESPACE_BEGIN(nanogui)
 
-/// Cursor shapes available to use in GLFW.  Shape of actual cursor determined by Operating System.
+/// Common data formats for images/textures
+enum class DataType : uint8_t {
+    // Signed and unsigned integer formats
+#if defined(WITH_ENOKI_LIB)
+    Invalid = (uint8_t) enoki::EnokiType::Invalid,
+
+    Bool    = (uint8_t) enoki::EnokiType::Bool,
+    UInt8   = (uint8_t) enoki::EnokiType::UInt8,
+    Int8    = (uint8_t) enoki::EnokiType::Int8,
+    UInt16  = (uint8_t) enoki::EnokiType::UInt16,
+    Int16   = (uint8_t) enoki::EnokiType::Int16,
+    UInt32  = (uint8_t) enoki::EnokiType::UInt32,
+    Int32   = (uint8_t) enoki::EnokiType::Int32,
+    UInt64  = (uint8_t) enoki::EnokiType::UInt64,
+    Int64   = (uint8_t) enoki::EnokiType::Int64,
+
+    // Floating point formats
+    Float16 = (uint8_t) enoki::EnokiType::Float16,
+    Float32 = (uint8_t) enoki::EnokiType::Float32,
+    Float64 = (uint8_t) enoki::EnokiType::Float64
+#else
+    Invalid,
+
+    Bool,
+    UInt8,
+    Int8,
+    UInt16,
+    Int16,
+    UInt32,
+    Int32,
+    UInt64,
+    Int64,
+
+    // Floating point formats
+    Float16,
+    Float32,
+    Float64
+#endif
+};
+
+/// Cursor shapes available to use in GLFW/Qt.  Shape of actual cursor determined by Operating System.
 enum class Cursor {
     Arrow = 0,  ///< The arrow cursor.
     IBeam,      ///< The I-beam cursor.
@@ -133,17 +259,151 @@ enum class Cursor {
     CursorCount ///< Not a cursor --- should always be last: enables a loop over the cursor types.
 };
 
-/* Import some common Enoki types */
-using Vector2f     = enoki::Array<float, 2>;
-using Vector3f     = enoki::Array<float, 3>;
-using Vector4f     = enoki::Array<float, 4>;
-using Vector2i     = enoki::Array<int32_t, 2>;
-using Vector3i     = enoki::Array<int32_t, 3>;
-using Vector4i     = enoki::Array<int32_t, 4>;
-using Matrix2f     = enoki::Matrix<float, 2>;
-using Matrix3f     = enoki::Matrix<float, 3>;
-using Matrix4f     = enoki::Matrix<float, 4>;
-using Quaternion4f = enoki::Quaternion<float>;
+/* Import some common vector types */
+#if defined(WITH_ENOKI_LIB)
+ using Vector2f     = enoki::Array<float, 2>;
+ using Vector3f     = enoki::Array<float, 3>;
+ using Vector4f     = enoki::Array<float, 4>;
+ using Vector2i     = enoki::Array<int32_t, 2>;
+ using Vector3i     = enoki::Array<int32_t, 3>;
+ using Vector4i     = enoki::Array<int32_t, 4>;
+ using Matrix2f     = enoki::Matrix<float, 2>;
+ using Matrix3f     = enoki::Matrix<float, 3>;
+ using Matrix4f     = enoki::Matrix<float, 4>;
+ using Quaternion4f = enoki::Quaternion<float>;
+
+ namespace nutils {
+    template<typename T> bool all(const T &v) { return enoki::all(v); }
+    template<typename T> bool contains(const T &v, const T &lower_bound, const T &upper_bound) { return enoki::all(v >= lower_bound) && enoki::all(v < upper_bound); }
+    template<typename T> float dot(const T &a, const T &b) { return enoki::dot(a, b); }
+
+    template <typename T> constexpr size_t array_depth_v = enoki::array_depth_v<T>;
+    template <typename T> constexpr DataType array_type_v = static_cast<DataType>(enoki::enoki_type_v<enoki::scalar_t<T>>);
+
+    template <typename Matrix, typename Vector> Matrix translate(const Vector &v) { return enoki::translate<Matrix>(v); }
+    template <typename Matrix, typename Vector> Matrix scale(const Vector &v) { return enoki::scale<Matrix>(v); }
+    template <typename Matrix, typename Vector3> Matrix rotate(const Vector3 &axis, const enoki::entry_t<Matrix> &angle) { return enoki::rotate<Matrix>(axis, angle); }
+    template <typename Matrix> Matrix ortho(const enoki::entry_t<Matrix> &left, const enoki::entry_t<Matrix> &right,
+                                            const enoki::entry_t<Matrix> &bottom, const enoki::entry_t<Matrix> &top,
+                                            const enoki::entry_t<Matrix> &near_, const enoki::entry_t<Matrix> &far_) {
+        return enoki::ortho<Matrix>(left, right, bottom, top, near_, far_); }
+    template <typename Matrix> Matrix perspective(const enoki::entry_t<Matrix> &fov,
+                                                  const enoki::entry_t<Matrix> &near_, const enoki::entry_t<Matrix> &far_,
+                                                  const enoki::entry_t<Matrix> &aspect = 1.f) {
+        return enoki::perspective<Matrix>(fov, near_, far_, aspect); }
+    template <typename Matrix, typename Point, typename Vector> Matrix look_at(const Point &origin, const Point &target, const Vector &up) {
+        return enoki::look_at<Matrix>(origin, target, up); }
+ }
+#elif defined(WITH_EIGEN_LIB)
+ using Vector2f = Eigen::Vector2f;
+ using Vector3f = Eigen::Vector3f;
+ using Vector4f = Eigen::Vector4f;
+ using Vector2i = Eigen::Vector2i;
+ using Vector3i = Eigen::Vector3i;
+ using Vector4i = Eigen::Vector4i;
+ using Matrix3f = Eigen::Matrix3f;
+ using Matrix4f = Eigen::Matrix4f;
+ using VectorXf = Eigen::VectorXf;
+ using MatrixXf = Eigen::MatrixXf;
+
+ using MatrixXu = Eigen::Matrix<uint32_t, Eigen::Dynamic, Eigen::Dynamic>;
+ namespace nutils {
+    template<typename T> bool all(const T &v) { return all(v); }
+    template<typename T> bool contains(const T &v, const T &lower_bound, const T &upper_bound) { auto d = v.array();
+        return (d >= lower_bound).all() && (d < upper_bound.array()).all(); }
+ }
+#else // WITH_LINALG_LIB
+ struct Vector2i : linalg::aliases::int2 {
+     typedef int entry_type;
+     typedef linalg::aliases::int2 base_type;
+     Vector2i(int a = 0) : base_type(a, a) {}
+     Vector2i(int x, int y) : base_type(x, y) {}
+     Vector2i(base_type v) : base_type(v) {}
+     int &x() { return base_type::x; }
+     int &y() { return base_type::y; }
+     int x() const { return base_type::x; }
+     int y() const { return base_type::y; }
+     const base_type &base() const { return *static_cast<const base_type*>(this); }
+ };
+ using Vector3i     = linalg::aliases::int3;
+ using Vector4i     = linalg::aliases::int4;
+ struct Vector2f : linalg::aliases::float2 {
+     typedef float entry_type;
+     typedef linalg::aliases::float2 base_type;
+     Vector2f(float a) : base_type(a, a) {}
+     Vector2f(float x, float y) : base_type(x, y) {}
+     Vector2f(base_type v) : base_type(v) {}
+     Vector2f(const Vector2i &v) : base_type(v) {}
+     float &x() { return base_type::x; }
+     float &y() { return linalg::aliases::float2::y; }
+     float x() const { return base_type::x; }
+     float y() const { return base_type::y; }
+     const base_type &base() const { return *static_cast<const base_type*>(this); }
+ };
+ struct Vector3f : linalg::aliases::float3 {
+     typedef float entry_type;
+     typedef linalg::aliases::float3 base_type;
+     Vector3f(float a) : base_type(a, a, a) {}
+     Vector3f(float x, float y, float z) : base_type(x, y, z) {}
+     Vector3f(base_type v) : base_type(v) {}
+     Vector3f(const Vector3i &v) : base_type(v) {}
+     float &x() { return base_type::x; }
+     float &y() { return base_type::y; }
+     float &z() { return base_type::z; }
+     float x() const { return base_type::x; }
+     float y() const { return base_type::y; }
+     float z() const { return base_type::z; }
+     const base_type &base() const { return *static_cast<const base_type*>(this); }
+ };
+ struct Vector4f : linalg::aliases::float4 {
+     typedef float entry_type;
+     typedef linalg::aliases::float4 base_type;
+     Vector4f(float a) : base_type(a, a, a, a) {}
+     Vector4f(float x, float y, float z, float w) : base_type(x, y, z, w) {}
+     Vector4f(base_type v) : base_type(v) {}
+     Vector4f(const Vector4i &v) : base_type(v) {}
+     float &x() { return base_type::x; }
+     float &y() { return base_type::y; }
+     float &z() { return base_type::z; }
+     float &w() { return base_type::w; }
+     float x() const { return base_type::x; }
+     float y() const { return base_type::y; }
+     float z() const { return base_type::z; }
+     float w() const { return base_type::w; }
+     const base_type &base() const { return *static_cast<const base_type*>(this); }
+ };
+ using Matrix2f     = linalg::aliases::float2x2;
+ using Matrix3f     = linalg::aliases::float3x3;
+ using Matrix4f     = linalg::aliases::float4x4;
+ using Quaternion4f = linalg::aliases::float4;
+ static bool operator == (const Vector2i& a, const Vector2i& b) { return linalg::compare(a.base(), b.base()) == 0; }
+ static bool operator != (const Vector2i& a, const Vector2i& b) { return linalg::compare(a.base(), b.base()) != 0; }
+ static bool operator < (const Vector2i& a, const Vector2i& b) { return linalg::compare(a.base(), b.base()) < 0; }
+ static bool operator >= (const Vector2i& a, const int b) { return linalg::compare(a.base(), linalg::aliases::int2(b,b)) >= 0; }
+ static bool operator >= (const Vector2f& a, const int b) { return linalg::compare(a.base(), linalg::aliases::float2(b,b)) >= 0; }
+ static Vector2i operator + (const Vector2i& a, const Vector2i& b) { return linalg::apply(linalg::detail::op_add{}, a.base(), b.base()); }
+ static Vector2f operator + (const Vector2f& a, const Vector2f& b) { return linalg::apply(linalg::detail::op_add{}, a.base(), b.base()); }
+ static Vector2i operator * (const Vector2i& a, const Vector2i& b) { return linalg::apply(linalg::detail::op_add{}, a.base(), b.base()); }
+ static Vector2f operator - (const Vector2f& a, const Vector2f& b) { return linalg::apply(linalg::detail::op_sub{}, a.base(), b.base()); }
+ static Vector2i operator - (const Vector2i& a, const Vector2i& b) { return linalg::apply(linalg::detail::op_sub{}, a.base(), b.base()); }
+ static Vector2i operator / (const Vector2i& a, const int b) { return linalg::apply(linalg::detail::op_div{}, a.base(), b); }
+ static Vector2f operator / (const Vector2f& a, const float b) { return linalg::apply(linalg::detail::op_div{}, a.base(), b); }
+ static Vector2f operator * (const Vector2f& a, const float b) { return linalg::apply(linalg::detail::op_mul{}, a.base(), b); }
+ static Vector3f operator / (const Vector3f& a, const float b) { return linalg::apply(linalg::detail::op_div{}, a.base(), b); }
+ static Vector4f operator / (const Vector4f& a, const float b) { return linalg::apply(linalg::detail::op_div{}, a.base(), b); }
+ static Vector2i max(const Vector2i& a, const Vector2i& b) { return linalg::apply(linalg::detail::max{}, a.base(), b.base()); }
+ static Vector2i min(const Vector2i& a, const Vector2i& b) { return linalg::apply(linalg::detail::min{}, a.base(), b.base()); }
+ namespace nutils {
+    static inline bool all(const bool &v) { return v; }
+    template<typename T> bool contains(const T &v, const T &lower_bound, const T &upper_bound) {
+        return ( linalg::all(greater(v.base(),lower_bound.base())) || linalg::all(linalg::equal(v.base(),lower_bound.base())) ) && linalg::all(linalg::less(v.base(),upper_bound.base())); }
+
+    template<typename T> float dot(const T &a, const T &b) { return linalg::dot(a.base(), b.base()); }
+
+    template <typename T> size_t array_depth_v ;
+    template <typename T> DataType array_type_v;
+ }
+#endif
 
 
 /**
@@ -319,7 +579,7 @@ public:
      * an alpha component of 1.0.
      */
     Color contrasting_color() const {
-        float luminance = enoki::dot(*this, Color(0.299f, 0.587f, 0.144f, 0.f));
+        float luminance = nutils::dot(*this, Color(0.299f, 0.587f, 0.144f, 0.f));
         return Color(luminance < 0.5f ? 1.f : 0.f, 1.f);
     }
 

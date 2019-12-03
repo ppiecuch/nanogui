@@ -81,7 +81,7 @@ public:
      * The buffer will be replaced if it is already present.
      */
     void set_buffer(const std::string &name,
-                    enoki::EnokiType type,
+                    DataType type,
                     size_t ndim,
                     std::array<size_t, 3> shape,
                     const void *data);
@@ -96,19 +96,19 @@ public:
         size_t ndim;
         const void *data;
 
-        if constexpr (enoki::array_depth_v<Array> == 0) {
+        if constexpr (nutils::array_depth_v<Array> == 0) {
             data = &value;
             ndim = 0;
-        } else if constexpr (enoki::array_depth_v<Array> == 1) {
+        } else if constexpr (nutils::array_depth_v<Array> == 1) {
             data = value.data();
             shape[0] = value.size();
             ndim = 1;
-        } else if constexpr (enoki::array_depth_v<Array> == 2) {
+        } else if constexpr (nutils::array_depth_v<Array> == 2) {
             data = value.data();
             shape[0] = value.size();
             shape[1] = value[0].size();
             ndim = 2;
-        } else if constexpr (enoki::array_depth_v<Array> == 3) {
+        } else if constexpr (nutils::array_depth_v<Array> == 3) {
             data = value.data();
             shape[0] = value.size();
             shape[1] = value[0].size();
@@ -117,7 +117,7 @@ public:
         } else {
             throw std::runtime_error("Shader::set_uniform(): invalid input array dimension!");
         }
-        set_buffer(name, enoki::enoki_type_v<enoki::scalar_t<Array>>, ndim, shape, data);
+        set_buffer(name, nutils::array_type_v<Array>, ndim, shape, data);
     }
 
     /**
@@ -192,7 +192,7 @@ protected:
     struct Buffer {
         void *buffer = nullptr;
         BufferType type = Unknown;
-        enoki::EnokiType dtype = enoki::EnokiType::Invalid;
+        DataType dtype = DataType::Invalid;
         int index = 0;
         size_t ndim = 0;
         std::array<size_t, 3> shape { 0, 0, 0 };
@@ -215,18 +215,18 @@ protected:
         uint32_t m_shader_handle = 0;
     #  if defined(NANOGUI_USE_OPENGL)
         uint32_t m_vertex_array_handle = 0;
-        bool m_uses_point_size = false;
     #  endif
+        bool m_uses_point_size = false;
     #elif defined(NANOGUI_USE_METAL)
         void *m_pipeline_state;
     #endif
 };
 
-/// Return the size in bytes associated with a specific Enoki type
-extern NANOGUI_EXPORT size_t enoki_type_size(enoki::EnokiType type);
+/// Return the size in bytes associated with a specific Data type
+extern NANOGUI_EXPORT size_t data_type_size(DataType type);
 
-/// Return the name (e.g. "uint8") associated with a specific Enoki type
-extern NANOGUI_EXPORT const char *enoki_type_name(enoki::EnokiType type);
+/// Return the name (e.g. "uint8") associated with a specific Data type
+extern NANOGUI_EXPORT const char *data_type_name(DataType type);
 
 /// Access binary data stored in nanogui_resources.cpp
 #define NANOGUI_RESOURCE_STRING(name) std::string(name, name + name##_size)

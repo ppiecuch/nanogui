@@ -105,7 +105,7 @@ bool Widget::mouse_button_event(const Vector2i &p, int button, bool down, int mo
             child->mouse_button_event(p - m_pos, button, down, modifiers))
             return true;
     }
-    if (button == GLFW_MOUSE_BUTTON_1 && down && !m_focused)
+    if (button == NGUI_MOUSE_BUTTON_1 && down && !m_focused)
         request_focus();
     return false;
 }
@@ -264,6 +264,7 @@ void Widget::draw(NVGcontext *ctx) {
         #endif
     }
     nvgTranslate(ctx, -m_pos.x(), -m_pos.y());
+
 }
 
 NAMESPACE_END(nanogui)

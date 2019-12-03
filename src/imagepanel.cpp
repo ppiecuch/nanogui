@@ -33,8 +33,8 @@ int ImagePanel::index_for_position(const Vector2i &p) const {
     float icon_region = m_thumb_size / (float)(m_thumb_size + m_spacing);
     bool over_image = pp.x() - std::floor(pp.x()) < icon_region &&
                       pp.y() - std::floor(pp.y()) < icon_region;
-    Vector2i grid_pos(pp), grid = grid_size();
-    over_image &= all(grid_pos >= 0 && grid_pos < grid && pp >= 0);
+    Vector2i grid_pos(pp.x(), pp.y()), grid = grid_size();
+    over_image &= nutils::all(grid_pos >= 0 && grid_pos < grid && pp >= 0);
     return over_image ? (grid_pos.x() + grid_pos.y() * grid.x()) : -1;
 }
 
@@ -64,8 +64,8 @@ void ImagePanel::draw(NVGcontext* ctx) {
     Vector2i grid = grid_size();
 
     for (size_t i = 0; i < m_images.size(); ++i) {
-        Vector2i p = m_pos + Vector2i(m_margin) +
-            Vector2i((int) i % grid.x(), (int) i / grid.x()) * (m_thumb_size + m_spacing);
+        Vector2i p = Vector2i(m_pos.x(), m_pos.y()) + Vector2i(m_margin) +
+            Vector2i((int) i % grid.x(), (int) i / grid.x()) * Vector2i(m_thumb_size + m_spacing);
         int imgw, imgh;
 
         nvgImageSize(ctx, m_images[i].first, &imgw, &imgh);

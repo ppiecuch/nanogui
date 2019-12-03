@@ -9,8 +9,6 @@
     BSD-style license that can be found in the LICENSE.txt file.
 */
 
-#include <nanogui/screen.h>
-
 #if defined(_WIN32)
 #  define NOMINMAX
 #  include <windows.h>
@@ -18,6 +16,7 @@
 
 #include <nanogui/opengl.h>
 #include <nanogui/metal.h>
+#include <nanogui/screen.h>
 #include <map>
 #include <thread>
 #include <chrono>
@@ -30,13 +29,36 @@
 #  include <dirent.h>
 #endif
 
+#ifdef QT_GUI_LIB
+#  include <qdebug.h>
+#  include <qdiriterator.h>
+#  include <qguiapplication.h>
+#  include <qelapsedtimer.h>
+double sysGetTime() {
+    static QElapsedTimer timer;
+    if (!timer.isValid())
+        timer.start();
+    return timer.elapsed() / 1000.;
+}
+#endif
+
+#ifdef NGUI_NFD
+#  include <nfd.h>
+#endif
+
 #if defined(EMSCRIPTEN)
 #  include <emscripten/emscripten.h>
 #endif
 
+#include <nanogui/screen.h>
+
 NAMESPACE_BEGIN(nanogui)
 
-extern std::map<GLFWwindow *, Screen *> __nanogui_screens;
+#ifdef QT_GUI_LIB
+ extern std::map<QWindow *, Screen *> __nanogui_screens;
+#else
+ extern std::map<GLFWwindow *, Screen *> __nanogui_screens;
+#endif
 
 #if defined(__APPLE__)
   extern void disable_saved_application_state_osx();
@@ -52,22 +74,24 @@ void init() {
         disable_saved_application_state_osx();
     #endif
 
-    glfwSetErrorCallback(
-        [](int error, const char *descr) {
-            if (error == GLFW_NOT_INITIALIZED)
-                return; /* Ignore */
-            std::cerr << "GLFW error " << error << ": " << descr << std::endl;
-        }
-    );
+    #ifndef QT_GUI_LIB
+        glfwSetErrorCallback(
+            [](int error, const char *descr) {
+                if (error == GLFW_NOT_INITIALIZED)
+                    return; /* Ignore */
+                std::cerr << "GLFW error " << error << ": " << descr << std::endl;
+            }
+        );
 
-    if (!glfwInit())
-        throw std::runtime_error("Could not initialize GLFW!");
+        if (!glfwInit())
+            throw std::runtime_error("Could not initialize GLFW!");
 
-#if defined(NANOGUI_USE_METAL)
-    metal_init();
-#endif
+        glfwSetTime(0);
+    #endif // QT_GUI_LIB
 
-    glfwSetTime(0);
+    #if defined(NANOGUI_USE_METAL)
+        metal_init();
+    #endif
 }
 
 static bool mainloop_active = false;
@@ -80,56 +104,57 @@ static float emscripten_refresh = 0;
 std::mutex m_async_mutex;
 std::vector<std::function<void()>> m_async_functions;
 
+bool runonce() {
+    int num_screens = 0;
+
+    #if defined(EMSCRIPTEN)
+        double emscripten_now = glfwGetTime();
+        bool emscripten_redraw = false;
+        if (float((emscripten_now - emscripten_last) * 1000) > emscripten_refresh) {
+            emscripten_redraw = true;
+            emscripten_last = emscripten_now;
+        }
+    #endif
+
+    /* Run async functions */
+    {
+        std::lock_guard<std::mutex> guard(m_async_mutex);
+        for (auto &f : m_async_functions)
+            f();
+        m_async_functions.clear();
+    }
+
+    for (auto kv : __nanogui_screens) {
+        Screen *screen = kv.second;
+        if (!screen->visible()) {
+            continue;
+        } else if (screen->window_should_close()) {
+            screen->set_visible(false);
+            continue;
+        }
+        #if defined(EMSCRIPTEN)
+            if (emscripten_redraw || screen->tooltip_fade_in_progress())
+                screen->redraw();
+        #endif
+        screen->draw_all();
+        num_screens++;
+    }
+
+    if (num_screens == 0) {
+        /* Give up if there was nothing to draw */
+        return false;
+    }
+    return true;
+}
+
 void mainloop(float refresh) {
     if (mainloop_active)
         throw std::runtime_error("Main loop is already running!");
 
-    auto mainloop_iteration = []() {
-        int num_screens = 0;
-
-        #if defined(EMSCRIPTEN)
-            double emscripten_now = glfwGetTime();
-            bool emscripten_redraw = false;
-            if (float((emscripten_now - emscripten_last) * 1000) > emscripten_refresh) {
-                emscripten_redraw = true;
-                emscripten_last = emscripten_now;
-            }
-        #endif
-
-        /* Run async functions */ {
-            std::lock_guard<std::mutex> guard(m_async_mutex);
-            for (auto &f : m_async_functions)
-                f();
-            m_async_functions.clear();
-        }
-
-        for (auto kv : __nanogui_screens) {
-            Screen *screen = kv.second;
-            if (!screen->visible()) {
-                continue;
-            } else if (glfwWindowShouldClose(screen->glfw_window())) {
-                screen->set_visible(false);
-                continue;
-            }
-            #if defined(EMSCRIPTEN)
-                if (emscripten_redraw || screen->tooltip_fade_in_progress())
-                    screen->redraw();
-            #endif
-            screen->draw_all();
-            num_screens++;
-        }
-
-        if (num_screens == 0) {
-            /* Give up if there was nothing to draw */
-            mainloop_active = false;
-            return;
-        }
-
-        #if !defined(EMSCRIPTEN)
+        #if !defined(EMSCRIPTEN) && !defined(QT_GUI_LIB)
             /* Wait for mouse/keyboard or empty refresh events */
             glfwWaitEvents();
         #endif
-    };
 
 #if defined(EMSCRIPTEN)
     emscripten_refresh = refresh;
@@ -145,13 +170,13 @@ void mainloop(float refresh) {
     std::chrono::microseconds quantum;
     size_t quantum_count = 1;
     if (refresh >= 0) {
-        quantum = std::chrono::microseconds(enoki::ssize_t(refresh * 1'000));
-        while (quantum.count() > 50'000) {
+        quantum = std::chrono::microseconds(ssize_t(refresh * 1000));
+        while (quantum.count() > 50000) {
             quantum /= 2;
             quantum_count *= 2;
         }
     } else {
-        quantum = std::chrono::microseconds(50'000);
+        quantum = std::chrono::microseconds(50000);
         quantum_count = std::numeric_limits<size_t>::max();
     }
 
@@ -177,18 +202,32 @@ void mainloop(float refresh) {
         }
     );
 
-    try {
-        while (mainloop_active)
-            mainloop_iteration();
+#ifdef QT_GUI_LIB
+    qApp->connect( qApp, &QCoreApplication::aboutToQuit, [=]( ){
+        mainloop_active = false;
+    });
+#endif
 
+    try {
+        while (mainloop_active) {
+            mainloop_active = runonce();
+    #ifdef QT_GUI_LIB
+            qApp->processEvents();
+            /* Wait for mouse/keyboard or empty refresh events */
+        }
+    #else
+            glfwWaitEvents();
+        }
         /* Process events once more */
         glfwPollEvents();
+    #endif
     } catch (const std::exception &e) {
         std::cerr << "Caught exception in main loop: " << e.what() << std::endl;
         leave();
     }
 
-    refresh_thread.join();
+    if (refresh > 0)
+        refresh_thread.join();
 }
 
 void async(const std::function<void()> &func) {
@@ -196,17 +235,14 @@ void async(const std::function<void()> &func) {
     m_async_functions.push_back(func);
 }
 
-void leave() {
-    mainloop_active = false;
-}
+void leave() { mainloop_active = false; }
 
-bool active() {
-    return mainloop_active;
-}
+bool active() { return mainloop_active; }
 
 void shutdown() {
+#if !defined(QT_GUI_LIB)
     glfwTerminate();
-
+#endif
 #if defined(NANOGUI_USE_METAL)
     metal_shutdown();
 #endif
@@ -256,7 +292,13 @@ int __nanogui_get_image(NVGcontext *ctx, const std::string &name, uint8_t *data,
 std::vector<std::pair<int, std::string>>
 load_image_directory(NVGcontext *ctx, const std::string &path) {
     std::vector<std::pair<int, std::string> > result;
-#if !defined(_WIN32)
+#if defined(QT_CORE_LIB)
+    QDirIterator it(path.c_str());
+    while(it.hasNext()) {
+        QFileInfo fi( it.next() );
+        const std::string sf( fi.fileName().toUtf8().constData() );
+        const char *fname = sf.c_str();
+#elif !defined(_WIN32)
     DIR *dp = opendir(path.c_str());
     if (!dp)
         throw std::runtime_error("Could not open image directory!");
@@ -280,7 +322,9 @@ load_image_directory(NVGcontext *ctx, const std::string &path) {
             throw std::runtime_error("Could not open image data!");
         result.push_back(
             std::make_pair(img, full_name.substr(0, full_name.length() - 4)));
-#if !defined(_WIN32)
+#if defined(QT_CORE_LIB)
+    }
+#elif !defined(_WIN32)
     }
     closedir(dp);
 #else
@@ -295,16 +339,47 @@ std::string file_dialog(const std::vector<std::pair<std::string, std::string>> &
     return result.empty() ? "" : result.front();
 }
 
-#if !defined(__APPLE__)
+#if defined(EMSCRIPTEN)
+    throw std::runtime_error("Opening files is not supported when NanoGUI is compiled via Emscripten");
+#elif defined(NGUI_NFD)
+std::vector<std::string> file_dialog(const std::vector<std::pair<std::string, std::string>> &filetypes, bool save, bool multiple) {
+nfdchar_t *outPath = NULL;
+    if (save && multiple) {
+        throw std::invalid_argument("save and multiple must not both be true.");
+    }
+    nfdresult_t result = NFD_OpenDialog( NULL, NULL, &outPath );
+
+    if ( result == NFD_OKAY ) {
+    } else if ( result == NFD_CANCEL ) {
+    } else {
+        std::cerr << "Error: " << NFD_GetError() << std::endl;
+    }
+    return std::vector<std::string>();
+}
+#elif defined(QT_WIDGETS_LIB)
+std::vector<std::string> file_dialog(const std::vector<std::pair<std::string, std::string>> &filetypes, bool save, bool multiple) {
+    if (save && multiple) {
+        throw std::invalid_argument("save and multiple must not both be true.");
+    }
+    QFileDialog fd;
+    return std::vector<std::string>();
+}
+#elif defined(__APPLE__)
+#include <TargetConditionals.h>
+#if TARGET_OS_IPHONE
+std::vector<std::string> file_dialog(const std::vector<std::pair<std::string, std::string>> &filetypes, bool save, bool multiple) {
+    std::cerr << "file_dialog unsupported";
+    return std::vector<std::string>();
+}
+#endif
+#else
 std::vector<std::string> file_dialog(const std::vector<std::pair<std::string, std::string>> &filetypes, bool save, bool multiple) {
     static const int FILE_DIALOG_MAX_BUFFER = 16384;
     if (save && multiple) {
         throw std::invalid_argument("save and multiple must not both be true.");
     }
 
-#if defined(EMSCRIPTEN)
-    throw std::runtime_error("Opening files is not supported when NanoGUI is compiled via Emscripten");
-#elif defined(_WIN32)
+#if defined(_WIN32)
     OPENFILENAME ofn;
     ZeroMemory(&ofn, sizeof(OPENFILENAME));
     ofn.lStructSize = sizeof(OPENFILENAME);
@@ -374,7 +449,7 @@ std::vector<std::string> file_dialog(const std::vector<std::pair<std::string, st
     }
 
     return result;
-#else
+#else // linux
     char buffer[FILE_DIALOG_MAX_BUFFER];
     buffer[0] = '\0';
 
@@ -412,9 +487,9 @@ std::vector<std::string> file_dialog(const std::vector<std::pair<std::string, st
     }
 
     return result;
-#endif
+#endif // _WIN32
 }
-#endif
+#endif // !APPLE
 
 void Object::inc_ref() const {
     m_ref_count++;

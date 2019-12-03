@@ -137,7 +137,7 @@ void ColorWheel::draw(NVGcontext *ctx) {
 bool ColorWheel::mouse_button_event(const Vector2i &p, int button, bool down,
                                   int modifiers) {
     Widget::mouse_button_event(p, button, down, modifiers);
-    if (!m_enabled || button != GLFW_MOUSE_BUTTON_1)
+    if (!m_enabled || button != NGUI_MOUSE_BUTTON_1)
         return false;
 
     if (down) {

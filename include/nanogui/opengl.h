@@ -13,41 +13,56 @@
 
 #pragma once
 
-#include <nanogui/common.h>
-
 #if !defined(DOXYGEN_SHOULD_SKIP_THIS)
-#  if defined(NANOGUI_USE_OPENGL)
-#    if defined(NANOGUI_GLAD)
-#      if defined(NANOGUI_SHARED) && !defined(GLAD_GLAPI_EXPORT)
-#        define GLAD_GLAPI_EXPORT
-#      endif
-#      include <glad/glad.h>
-#    else
+#  if defined(QT_GUI_LIB)
+#    if defined(NANOGUI_USE_OPENGL) || defined(NANOGUI_USE_GLES)
 #      if defined(__APPLE__)
-#        define GLFW_INCLUDE_GLCOREARB
+#        include <qopengl.h>
 #      else
-#        define GL_GLEXT_PROTOTYPES
+#        include "qtgl.h"
 #      endif
+#      ifndef GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS
+#        define GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS 0x8CD9
+#      endif
+#    else
+#      error Qt is supporting OpenGL/OpenGLES backend only.
 #    endif
-#  elif defined(NANOGUI_USE_GLES) && NANOGUI_GLES_VERSION == 2
-#    define GLFW_INCLUDE_ES2
-#  elif defined(NANOGUI_USE_GLES) && NANOGUI_GLES_VERSION == 3
-#    define GLFW_INCLUDE_ES3
-#  elif defined(NANOGUI_USE_METAL)
-#  else
-#    error You must select a backend (OpenGL/GLES2/GLES3/Metal)
-#  endif
+
+#  else // QT_GUI_LIB
+
+#    if defined(NANOGUI_USE_OPENGL)
+#      if defined(NANOGUI_GLAD)
+#        if defined(NANOGUI_SHARED) && !defined(GLAD_GLAPI_EXPORT)
+#          define GLAD_GLAPI_EXPORT
+#        endif
+#        include <glad/glad.h>
+#      else
+#        if defined(__APPLE__)
+#          define GLFW_INCLUDE_GLCOREARB
+#        else
+#          define GL_GLEXT_PROTOTYPES
+#        endif
+#      endif
+#    elif defined(NANOGUI_USE_GLES) && NANOGUI_GLES_VERSION == 2
+#      define GLFW_INCLUDE_ES2
+#    elif defined(NANOGUI_USE_GLES) && NANOGUI_GLES_VERSION == 3
+#      define GLFW_INCLUDE_ES3
+#    elif defined(NANOGUI_USE_METAL)
+#    else
+#      error You must select a backend (OpenGL/GLES2/GLES3/Metal)
+#    endif // NANOGUI_USE_OPENGL
+
+#    include <GLFW/glfw3.h>
+
+#    if defined(NANOGUI_USE_GLES)
+#      if NANOGUI_GLES_VERSION == 2
+#        include <GLES2/gl2ext.h>
+#      elif NANOGUI_GLES_VERSION == 3
+#        include <GLES3/gl2ext.h>
+#      endif
+#    endif // NANOGUI_USE_GLES
+#  endif // QT_GUI_LIB
 #endif // DOXYGEN_SHOULD_SKIP_THIS
-
-#include <GLFW/glfw3.h>
-
-#if defined(NANOGUI_USE_GLES)
-#  if NANOGUI_GLES_VERSION == 2
-#    include <GLES2/gl2ext.h>
-#  elif NANOGUI_GLES_VERSION == 3
-#    include <GLES3/gl2ext.h>
-#  endif
-#endif
 
 #include <nanovg.h>
 
@@ -60,6 +75,8 @@
              (2) Compile with NANOGUI_USE_GLAD.
   #endif
 #endif
+
+#include <nanogui/common.h>
 
 NAMESPACE_BEGIN(nanogui)
 

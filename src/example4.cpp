@@ -19,7 +19,6 @@
 #include <nanogui/shader.h>
 #include <nanogui/renderpass.h>
 #include <enoki/transform.h>
-#include <GLFW/glfw3.h>
 
 #if defined(_WIN32)
 #  if defined(APIENTRY)
@@ -33,7 +32,6 @@ using nanogui::Vector2i;
 using nanogui::Shader;
 using nanogui::Canvas;
 using nanogui::ref;
-using enoki::EnokiType;
 
 class MyCanvas : public Canvas {
 public:
@@ -139,9 +137,9 @@ public:
             1, 0, 0, 1, 1, 0
         };
 
-        m_shader->set_buffer("indices", EnokiType::UInt32, 1, {3*12, 1, 1}, indices);
-        m_shader->set_buffer("position", EnokiType::Float32, 2, {8, 3, 1}, positions);
-        m_shader->set_buffer("color", EnokiType::Float32, 2, {8, 3, 1}, colors);
+        m_shader->set_buffer("indices", DataType::UInt32, 1, {3*12, 1, 1}, indices);
+        m_shader->set_buffer("position", DataType::Float32, 2, {8, 3, 1}, positions);
+        m_shader->set_buffer("color", DataType::Float32, 2, {8, 3, 1}, colors);
     }
 
     void set_rotation(float rotation) {
@@ -153,23 +151,23 @@ public:
 
         using Matrix4f = enoki::Matrix<float, 4>;
 
-        Matrix4f view = enoki::look_at<Matrix4f>(
+        Matrix4f view = nutils::look_at<Matrix4f>(
             Vector3f(0, -2, -10),
             Vector3f(0, 0, 0),
             Vector3f(0, 1, 0)
         );
 
-        Matrix4f model = enoki::rotate<Matrix4f>(
+        Matrix4f model = nutils::rotate<Matrix4f>(
             Vector3f(0, 1, 0),
-            (float) glfwGetTime()
+            (float) sysGetTime()
         );
 
-        Matrix4f model2 = enoki::rotate<Matrix4f>(
+        Matrix4f model2 = nutils::rotate<Matrix4f>(
             Vector3f(1, 0, 0),
             m_rotation
         );
 
-        Matrix4f proj = enoki::perspective<Matrix4f>(
+        Matrix4f proj = nutils::perspective<Matrix4f>(
             float(25 * M_PI / 180),
             0.1f,
             20.f,
@@ -225,7 +223,7 @@ public:
     virtual bool keyboard_event(int key, int scancode, int action, int modifiers) {
         if (Screen::keyboard_event(key, scancode, action, modifiers))
             return true;
-        if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+        if (key == NGUI_KEY_ESCAPE && action == NGUI_PRESS) {
             set_visible(false);
             return true;
         }

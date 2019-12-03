@@ -261,7 +261,7 @@ bool TabWidgetBase::mouse_button_event(const Vector2i &p, int button, bool down,
     }
 
     bool drag_in_progress = m_tab_drag_index != -1 && m_tab_drag_start != m_tab_drag_end;
-    if (m_popup_callback && button == GLFW_MOUSE_BUTTON_2 && down && index != -1 &&
+    if (m_popup_callback && button == NGUI_MOUSE_BUTTON_2 && down && index != -1 &&
         !drag_in_progress) {
         m_popup = m_popup_callback(tab_id(index), screen);
         m_popup->set_position(p + Vector2i(8, -6));
@@ -282,7 +282,7 @@ bool TabWidgetBase::mouse_button_event(const Vector2i &p, int button, bool down,
         handled = true;
     }
 
-    if (button == GLFW_MOUSE_BUTTON_1 && m_popup == nullptr) {
+    if (button == NGUI_MOUSE_BUTTON_1 && m_popup == nullptr) {
         if (index >= 0) {
             if (close && m_tab_drag_index == -1) {
                 if (down) {

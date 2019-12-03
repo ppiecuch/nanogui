@@ -14,6 +14,7 @@
 
 #include <nanogui/object.h>
 #include <nanogui/theme.h>
+#include <string>
 #include <vector>
 #include <algorithm>
 
@@ -213,7 +214,7 @@ public:
     /// Check if the widget contains a certain position
     bool contains(const Vector2i &p) const {
         auto d = p-m_pos;
-        return enoki::all(d >= 0) && enoki::all(d < m_size);
+        return nutils::contains(d, Vector2i(0,0), m_size);
     }
 
     /// Determine the widget located at the given position value (recursive)

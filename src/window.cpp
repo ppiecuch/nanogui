@@ -164,7 +164,7 @@ bool Window::mouse_enter_event(const Vector2i &p, bool enter) {
 
 bool Window::mouse_drag_event(const Vector2i &, const Vector2i &rel,
                             int button, int /* modifiers */) {
-    if (m_drag && (button & (1 << GLFW_MOUSE_BUTTON_1)) != 0) {
+    if (m_drag && (button & (1 << NGUI_MOUSE_BUTTON_1)) != 0) {
         m_pos += rel;
         m_pos = max(m_pos, Vector2i(0));
         m_pos = min(m_pos, parent()->size() - m_size);
@@ -176,7 +176,7 @@ bool Window::mouse_drag_event(const Vector2i &, const Vector2i &rel,
 bool Window::mouse_button_event(const Vector2i &p, int button, bool down, int modifiers) {
     if (Widget::mouse_button_event(p, button, down, modifiers))
         return true;
-    if (button == GLFW_MOUSE_BUTTON_1) {
+    if (button == NGUI_MOUSE_BUTTON_1) {
         m_drag = down && (p.y() - m_pos.y()) < m_theme->m_window_header_height;
         return true;
     }

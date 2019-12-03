@@ -33,11 +33,16 @@
 
 #  ifndef WIN32_LEAN_AND_MEAN
 #    define WIN32_LEAN_AND_MEAN
-# endif
+#  endif
 #  include <windows.h>
 
 #  define GLFW_EXPOSE_NATIVE_WGL
 #  define GLFW_EXPOSE_NATIVE_WIN32
+#  include <GLFW/glfw3native.h>
+#endif
+
+#if defined(__APPLE__)
+#  define GLFW_EXPOSE_NATIVE_COCOA 1
 #  include <GLFW/glfw3native.h>
 #endif
 
@@ -53,11 +58,6 @@
 #  include "opengl_check.h"
 #elif defined(NANOGUI_USE_METAL)
 #  include <nanovg_mtl.h>
-#endif
-
-#if defined(__APPLE__)
-#  define GLFW_EXPOSE_NATIVE_COCOA 1
-#  include <GLFW/glfw3native.h>
 #endif
 
 #if !defined(GL_RGBA_FLOAT_MODE)
@@ -969,8 +969,10 @@ void Screen::move_window_to_front(Window *window) {
     } while (changed);
 }
 
+double Screen::sys_get_time() const { return glfwGetTime(); }
+
 bool Screen::tooltip_fade_in_progress() const {
-    double elapsed = glfwGetTime() - m_last_interaction;
+    double elapsed = sys_get_time() - m_last_interaction;
     if (elapsed < 0.25f || elapsed > 1.25f)
         return false;
     /* Temporarily increase the frame rate to fade in the tooltip */

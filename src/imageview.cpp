@@ -15,7 +15,6 @@
 #include <nanogui/texture.h>
 #include <nanogui/screen.h>
 #include <nanogui/opengl.h>
-#include <enoki/transform.h>
 #include <nanogui_resources.h>
 
 NAMESPACE_BEGIN(nanogui)
@@ -26,7 +25,7 @@ ImageView::ImageView(Widget *parent) : Canvas(parent, 1, false, false, false) {
     m_image_shader = new Shader(
         render_pass(),
         /* An identifying name */
-        "a_simple_shader",
+        "a_imge_view",
         NANOGUI_SHADER(imageview_vertex),
         NANOGUI_SHADER(imageview_fragment),
         Shader::BlendMode::AlphaBlend
@@ -37,7 +36,7 @@ ImageView::ImageView(Widget *parent) : Canvas(parent, 1, false, false, false) {
         1.f, 0.f, 1.f, 1.f, 0.f, 1.f
     };
 
-    m_image_shader->set_buffer("position", enoki::EnokiType::Float32, 2,
+    m_image_shader->set_buffer("position", DataType::Float32, 2,
                          { 6, 2, 1 }, positions);
     m_render_pass->set_cull_mode(RenderPass::CullMode::Disabled);
 
@@ -83,8 +82,8 @@ bool ImageView::keyboard_event(int key, int /* scancode */, int action, int /* m
     if (!m_enabled || !m_image)
         return false;
 
-    if (action == GLFW_PRESS) {
-        if (key == GLFW_KEY_R) {
+    if (action == NGUI_PRESS) {
+        if (key == NGUI_KEY_R) {
             reset();
             return true;
         }
@@ -201,15 +200,12 @@ void ImageView::draw_contents() {
     float scale = std::pow(2.f, m_scale / 5.f);
 
     Matrix4f matrix_background =
-        enoki::scale<Matrix4f>(Vector3f(m_image->size().x() * scale / 20.f,
+        nutils::scale<Matrix4f>(Vector3f(m_image->size().x() * scale / 20.f,
                                         m_image->size().y() * scale / 20.f, 1.f));
-
     Matrix4f matrix_image =
-        enoki::ortho<Matrix4f>(0.f, viewport_size.x(),
-                               viewport_size.y(), 0.f, -1.f, 1.f) *
-        enoki::translate<Matrix4f>(Vector3f(m_offset.x(), (int) m_offset.y(), 0.f)) *
-        enoki::scale<Matrix4f>(Vector3f(m_image->size().x() * scale,
-                                        m_image->size().y() * scale, 1.f));
+        nutils::ortho<Matrix4f>(0.f, viewport_size.x(), viewport_size.y(), 0.f, -1.f, 1.f) *
+        nutils::translate<Matrix4f>(Vector3f(m_offset.x(), (int) m_offset.y(), 0.f)) *
+        nutils::scale<Matrix4f>(Vector3f(m_image->size().x() * scale, m_image->size().y() * scale, 1.f));
 
     m_image_shader->set_uniform("matrix_image",      Matrix4f(matrix_image));
     m_image_shader->set_uniform("matrix_background", Matrix4f(matrix_background));

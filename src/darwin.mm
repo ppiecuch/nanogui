@@ -8,6 +8,8 @@
 
 NAMESPACE_BEGIN(nanogui)
 
+#ifndef NGUI_NFD
+
 std::vector<std::string>
 file_dialog(const std::vector<std::pair<std::string, std::string>> &filetypes,
             bool save, bool multiple) {
@@ -46,6 +48,8 @@ file_dialog(const std::vector<std::pair<std::string, std::string>> &filetypes,
     }
     return result;
 }
+
+#endif // NGUI_NFD
 
 void chdir_to_bundle_parent() {
     NSString *path = [[[NSBundle mainBundle] bundlePath] stringByDeletingLastPathComponent];
