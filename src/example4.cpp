@@ -18,7 +18,6 @@
 #include <nanogui/canvas.h>
 #include <nanogui/shader.h>
 #include <nanogui/renderpass.h>
-#include <enoki/transform.h>
 
 #if defined(_WIN32)
 #  if defined(APIENTRY)
@@ -148,8 +147,6 @@ public:
 
     virtual void draw_contents() override {
         using namespace nanogui;
-
-        using Matrix4f = enoki::Matrix<float, 4>;
 
         Matrix4f view = nutils::look_at<Matrix4f>(
             Vector3f(0, -2, -10),

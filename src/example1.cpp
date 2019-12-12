@@ -552,7 +552,6 @@ public:
         Matrix4f mvp = nutils::scale<Matrix4f>(Vector3f(
                            (float) m_size.y() / (float) m_size.x() * 0.25f, 0.25f, 0.25f)) *
                        nutils::rotate<Matrix4f>(Vector3f(0, 0, 1), (float) sysGetTime());
-
         m_shader->set_uniform("mvp", mvp);
 
         m_render_pass->resize(framebuffer_size());

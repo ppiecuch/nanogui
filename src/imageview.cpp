@@ -72,7 +72,7 @@ Vector2f ImageView::pos_to_pixel(const Vector2f &p) const {
 }
 
 Vector2f ImageView::pixel_to_pos(const Vector2f &p) const {
-    Vector2i pos = (p * scale() + m_offset) / screen()->pixel_ratio();
+    Vector2i pos = Vector2i( (p * scale() + m_offset) / screen()->pixel_ratio() );
     if (m_draw_border)
         pos += 1.f;
     return pos;
@@ -109,7 +109,7 @@ bool ImageView::scroll_event(const Vector2i &p, const Vector2f &rel) {
     m_scale += rel.y();
 
     // Restrict scaling to a reasonable range
-    m_scale = std::max(m_scale, std::min(0.f, std::log2(40.f / hmax(m_image->size())) * 5.f));
+    m_scale = std::max(m_scale, std::min(0.f, std::log2(40.f / nutils::hmax(m_image->size())) * 5.f));
     m_scale = std::min(m_scale, 45.f);
 
     Vector2f p2 = pos_to_pixel(p - m_pos);
@@ -123,8 +123,8 @@ void ImageView::draw(NVGcontext *ctx) {
 
     Canvas::draw(ctx);
 
-    Vector2i top_left = pixel_to_pos(Vector2f(0.f, 0.f)),
-             size     = pixel_to_pos(Vector2f(m_image->size())) - top_left;
+    Vector2i top_left = Vector2i(pixel_to_pos(Vector2f(0.f, 0.f))),
+             size     = Vector2i(pixel_to_pos(Vector2f(m_image->size())) - top_left);
 
     if (m_draw_image_border) {
         nvgBeginPath(ctx);
@@ -187,21 +187,26 @@ void ImageView::draw_contents() {
 
     /* Ensure that 'offset' is a multiple of the pixel ratio */
     float pixel_ratio = screen()->pixel_ratio();
-    m_offset = Vector2i(Vector2i(m_offset / pixel_ratio) * pixel_ratio);
+    m_offset = Vector2i((m_offset / pixel_ratio) * pixel_ratio);
 
     Vector2f bound1 = m_size * pixel_ratio,
              bound2 = -m_image->size() * scale();
 
-    enoki::mask_t<Vector2i> out_of_bounds = neq(m_offset >= bound1, m_offset < bound2);
+#ifdef WITH_ENOKI_LIB
+    enoki::mask_t<Vector2i> out_of_bounds = enoki::neq(m_offset >= bound1, m_offset < bound2);
     m_offset[out_of_bounds] = enoki::max(enoki::min(m_offset, bound1), bound2);
+#else
+    Vector2f bounds = nutils::max(nutils::min(m_offset, bound1), bound2);
+    if (m_offset >= bound1) m_offset.width() = bounds.width();
+    if (m_offset < bound2)  m_offset.height() = bounds.height();
+#endif
 
     Vector2i viewport_size = render_pass()->viewport().second;
 
     float scale = std::pow(2.f, m_scale / 5.f);
 
     Matrix4f matrix_background =
-        nutils::scale<Matrix4f>(Vector3f(m_image->size().x() * scale / 20.f,
-                                        m_image->size().y() * scale / 20.f, 1.f));
+        nutils::scale<Matrix4f>(Vector3f(m_image->size().x() * scale / 20.f, m_image->size().y() * scale / 20.f, 1.f));
     Matrix4f matrix_image =
         nutils::ortho<Matrix4f>(0.f, viewport_size.x(), viewport_size.y(), 0.f, -1.f, 1.f) *
         nutils::translate<Matrix4f>(Vector3f(m_offset.x(), (int) m_offset.y(), 0.f)) *

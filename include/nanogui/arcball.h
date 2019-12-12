@@ -15,7 +15,9 @@
 #pragma once
 
 #include <nanogui/widget.h>
-#include <enoki/quaternion.h>
+#ifdef WITH_ENOKI_LIB
+# include <enoki/quaternion.h>
+#endif
 
 NAMESPACE_BEGIN(nanogui)
 
@@ -126,8 +128,8 @@ struct Arcball {
      */
     Arcball(float speed_factor = 2.0f)
         : m_active(false), m_last_pos(0), m_size(0),
-          m_quat(enoki::identity<Quaternion4f>()),
-          m_incr(enoki::identity<Quaternion4f>()),
+          m_quat(nutils::identity<Quaternion4f>()),
+          m_incr(nutils::identity<Quaternion4f>()),
           m_speed_factor(speed_factor) { }
 
     /**
@@ -143,7 +145,7 @@ struct Arcball {
      Arcball(const Quaternion4f &quat)
         : m_active(false), m_last_pos(0), m_size(0),
           m_quat(quat),
-          m_incr(enoki::identity<Quaternion4f>()),
+          m_incr(nutils::identity<Quaternion4f>()),
           m_speed_factor(2.0f) { }
 
     /**
@@ -162,7 +164,7 @@ struct Arcball {
         m_active = false;
         m_last_pos = 0;
         m_quat = state;
-        m_incr = enoki::identity<Quaternion4f>();
+        m_incr = nutils::identity<Quaternion4f>();
     }
 
     /**
@@ -203,7 +205,7 @@ struct Arcball {
         m_last_pos = pos;
         if (!m_active)
             m_quat = normalize(m_incr * m_quat);
-        m_incr = enoki::identity<Quaternion4f>();
+        m_incr = nutils::identity<Quaternion4f>();
     }
 
     /**
@@ -218,7 +220,7 @@ struct Arcball {
             return false;
 
         /* Based on the rotation controller form AntTweakBar */
-        float inv_min_dim = 1.0f / hmin(m_size);
+        float inv_min_dim = 1.0f / nutils::hmin(m_size);
         float w = (float) m_size.x(), h = (float) m_size.y();
 
         float ox = (m_speed_factor * (2*m_last_pos.x() - w) + w) - w - 1.0f;
@@ -230,18 +232,18 @@ struct Arcball {
         tx *= inv_min_dim; ty *= inv_min_dim;
 
         Vector3f v0(ox, oy, 1.0f), v1(tx, ty, 1.0f);
-        if (enoki::squared_norm(v0) > 1e-4f && enoki::squared_norm(v1) > 1e-4f) {
-            v0 = enoki::normalize(v0);
-            v1 = enoki::normalize(v1);
-            Vector3f axis = enoki::cross(v0, v1);
-            float sa = enoki::norm(axis),
-                  ca = enoki::dot(v0, v1),
+        if (nutils::squared_norm(v0) > 1e-4f && nutils::squared_norm(v1) > 1e-4f) {
+            v0 = nutils::normalize(v0);
+            v1 = nutils::normalize(v1);
+            Vector3f axis = nutils::cross(v0, v1);
+            float sa = nutils::norm(axis),
+                  ca = nutils::dot(v0, v1),
                   angle = std::atan2(sa, ca);
             if (tx*tx + ty*ty > 1.0f)
                 angle *= 1.0f + 0.2f * (std::sqrt(tx*tx + ty*ty) - 1.0f);
-            m_incr = enoki::rotate<Quaternion4f>(enoki::normalize(axis), angle);
-            if (!std::isfinite(enoki::abs(m_incr)))
-                m_incr = enoki::identity<Quaternion4f>();
+            m_incr = nutils::rotate<Quaternion4f>(nutils::normalize(axis), angle);
+            if (!std::isfinite(nutils::abs(m_incr)))
+                m_incr = nutils::identity<Quaternion4f>();
         }
         return true;
     }
@@ -253,7 +255,7 @@ struct Arcball {
      * bottom row.
      */
     Matrix4f matrix() const {
-        return enoki::quat_to_matrix<Matrix4f>(m_incr * m_quat);
+        return nutils::quat_to_matrix<Matrix4f>(m_incr * m_quat);
     }
 
     /// Returns the current rotation *including* the active motion.

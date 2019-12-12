@@ -14,6 +14,7 @@
 #  include <windows.h>
 #endif
 
+#define COMMON_COMPILATION_UNIT
 #include <nanogui/opengl.h>
 #include <nanogui/metal.h>
 #include <nanogui/screen.h>

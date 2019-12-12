@@ -1,3 +1,11 @@
+
+ngui_with_enoki|ngui_with_eigen|ngui_with_linalg {
+    # use provided configuration
+} else {
+    # default library with least dependencies
+    CONFIG *= ngui_with_linalg
+}
+
 NGUIRT = $$PWD/..
 
 INCLUDEPATH += $$NGUIRT/include $$NGUIRT/resources $$NGUIRT/ext $$NGUIRT/ext/qt
@@ -80,9 +88,14 @@ HEADERS += \
 CONFIG(ngui_with_enoki) {
     DEFINES += WITH_ENOKI_LIB
     INCLUDEPATH += $$NGUIRT/ext/enoki/include
-} else {
-    CONFIG(ngui_with_eigen): DEFINES += WITH_EIGEN_LIB
+    CONFIG *= c++17
+} else:CONFIG(ngui_with_eigen) {
+    DEFINES += WITH_EIGEN_LIB
     INCLUDEPATH += $$NGUIRT/ext/eigen/include
+} else:CONFIG(ngui_with_linalg) {
+    DEFINES += WITH_LINALG_LIB
+    INCLUDEPATH += $$NGUIRT/ext/algebra
+    CONFIG *= c++14
 }
 
 CONFIG(ngui_with_nfd) {

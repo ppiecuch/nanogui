@@ -96,6 +96,7 @@ public:
         size_t ndim;
         const void *data;
 
+# ifdef WITH_ENOKI_LIB
         if constexpr (nutils::array_depth_v<Array> == 0) {
             data = &value;
             ndim = 0;
@@ -117,6 +118,37 @@ public:
         } else {
             throw std::runtime_error("Shader::set_uniform(): invalid input array dimension!");
         }
+# else
+        cpp::static_if<nutils::array_depth_v<Array> == 0>([&](auto f){
+            auto v = f(value);
+            data = &v;
+            ndim = 0;
+        });
+        cpp::static_if<nutils::array_depth_v<Array> == 1>([&](auto f){
+            auto v = f(value);
+            data = v.data();
+            shape[0] = v.size();
+            ndim = 1;
+        });
+        cpp::static_if<nutils::array_depth_v<Array> == 2>([&](auto f){
+            auto v = f(value);
+            data = v.data();
+            shape[0] = v.size();
+            shape[1] = v[0].size();
+            ndim = 2;
+        });
+        cpp::static_if<nutils::array_depth_v<Array> == 3>([&](auto f){
+            auto v = f(value);
+            data = v.data();
+            shape[0] = v.size();
+            shape[1] = v[0].size();
+            shape[2] = v[0][0].size();
+            ndim = 3;
+        });
+        if (nutils::array_depth_v<Array> > 3) {
+            throw std::runtime_error("Shader::set_uniform(): invalid input array dimension!");
+        }
+# endif
         set_buffer(name, nutils::array_type_v<Array>, ndim, shape, data);
     }
 

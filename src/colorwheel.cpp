@@ -14,7 +14,9 @@
 #include <nanogui/colorwheel.h>
 #include <nanogui/theme.h>
 #include <nanogui/opengl.h>
-#include <enoki/matrix.h>
+#ifdef WITH_EENOKI_LIB
+# include <enoki/matrix.h>
+#endif
 
 NAMESPACE_BEGIN(nanogui)
 
@@ -24,7 +26,7 @@ ColorWheel::ColorWheel(Widget *parent, const Color& rgb)
 }
 
 Vector2i ColorWheel::preferred_size(NVGcontext *) const {
-    return { 100, 100. };
+    return { 100, 100 };
 }
 
 void ColorWheel::draw(NVGcontext *ctx) {
@@ -185,7 +187,7 @@ ColorWheel::Region ColorWheel::adjust_position(const Vector2i &p, Region conside
         return OuterCircle;
     }
 
-    auto sc = enoki::sincos(-m_hue * 2 * NVG_PI);
+    auto sc = nutils::sincos(-m_hue * 2 * NVG_PI);
     Vector2f xy(sc.second * x - sc.first * y,
                 sc.first * x + sc.second * y);
 

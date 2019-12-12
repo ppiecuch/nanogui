@@ -1,10 +1,12 @@
-CONFIG += debug ngui_with_nfd ngui_with_enoki
+CONFIG += debug ngui_with_nfd
 SOURCES += ../src/$${TARGET}.cpp
 RESOURCES += resources.qrc
 
+include("nanogui.pri")
+
 CONFIG(ngui_with_enoki): {
     MATH = -enoki
-    CONFIG += c++17
+    CONFIG *= c++17
 } else:CONFIG(ngui_with_eigen): MATH = -eigen
 
 CONFIG(c++17): CXX = -c17
@@ -23,5 +25,3 @@ RCC_DIR = $$DESTDIR/$$DBG/rcc
 
 COMPANY = KomSoft
 BUNDLE_PREFIX = com.komsoft
-
-include("nanogui.pri")

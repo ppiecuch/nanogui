@@ -20,12 +20,16 @@
 #elif defined(WITH_EIGEN_LIB)
 # include <Eigen/Core>
 #else
-# define WITH_LINALG_LIB
+# ifndef WITH_LINALG_LIB
+#  define WITH_LINALG_LIB
+# endif
 # include <algebra/linalg.h>
+# include <algebra/c++.h>
 #endif
 #include <stdint.h>
 #include <array>
 #include <vector>
+#include <functional>
 
 #ifdef QT_GUI_LIB
 # include <qnamespace.h>
@@ -273,16 +277,31 @@ enum class Cursor {
  using Quaternion4f = enoki::Quaternion<float>;
 
  namespace nutils {
+    template<typename T> constexpr size_t array_depth_v = enoki::array_depth_v<T>;
+    template<typename T> constexpr DataType array_type_v = static_cast<DataType>(enoki::enoki_type_v<enoki::scalar_t<T>>);
+
     template<typename T> bool all(const T &v) { return enoki::all(v); }
     template<typename T> bool contains(const T &v, const T &lower_bound, const T &upper_bound) { return enoki::all(v >= lower_bound) && enoki::all(v < upper_bound); }
-    template<typename T> float dot(const T &a, const T &b) { return enoki::dot(a, b); }
 
-    template <typename T> constexpr size_t array_depth_v = enoki::array_depth_v<T>;
-    template <typename T> constexpr DataType array_type_v = static_cast<DataType>(enoki::enoki_type_v<enoki::scalar_t<T>>);
+    template<typename T> auto abs(const T &v) { return enoki::abs(v); }
+    template<typename T> enoki::scalar_t<T> dot(const T &a, const T &b) { return enoki::dot(a, b); }
+    template<typename T> T cross(const T &a, const T &b) { return enoki::cross(a, b); }
+    template<typename T> T normalize(const T &v) { return enoki::normalize(v); }
+    template<typename T> enoki::scalar_t<T> norm(const T &v) { return enoki::norm(v); }
+    template<typename T> auto squared_norm(const T &v) { return enoki::squared_norm(v); }
+    template<typename V> auto sincos(const V &v) { return enoki::sincos(v); }
+    template<typename T> enoki::scalar_t<T> hmax(const T &v) { return enoki::hmax(v); }
+    template<typename T> enoki::scalar_t<T> hmin(const T &v) { return enoki::hmin(v); }
+
+    template<typename T> const T identity() { return enoki::identity<T>(); }
 
     template <typename Matrix, typename Vector> Matrix translate(const Vector &v) { return enoki::translate<Matrix>(v); }
     template <typename Matrix, typename Vector> Matrix scale(const Vector &v) { return enoki::scale<Matrix>(v); }
     template <typename Matrix, typename Vector3> Matrix rotate(const Vector3 &axis, const enoki::entry_t<Matrix> &angle) { return enoki::rotate<Matrix>(axis, angle); }
+
+    template <typename Quat, typename Vector3> Quat rotate(const Vector3 &axis, const enoki::value_t<Quat> &angle) { return enoki::rotate<Quat>(axis, angle); }
+    template<typename Matrix, typename Quat> Matrix quat_to_matrix(const Quat &q) { return enoki::quat_to_matrix<Matrix>(q); }
+
     template <typename Matrix> Matrix ortho(const enoki::entry_t<Matrix> &left, const enoki::entry_t<Matrix> &right,
                                             const enoki::entry_t<Matrix> &bottom, const enoki::entry_t<Matrix> &top,
                                             const enoki::entry_t<Matrix> &near_, const enoki::entry_t<Matrix> &far_) {
@@ -307,23 +326,34 @@ enum class Cursor {
  using MatrixXf = Eigen::MatrixXf;
 
  using MatrixXu = Eigen::Matrix<uint32_t, Eigen::Dynamic, Eigen::Dynamic>;
+
  namespace nutils {
     template<typename T> bool all(const T &v) { return all(v); }
-    template<typename T> bool contains(const T &v, const T &lower_bound, const T &upper_bound) { auto d = v.array();
-        return (d >= lower_bound).all() && (d < upper_bound.array()).all(); }
+    template<typename T> bool contains(const T &v, const T &lower_bound, const T &upper_bound) {
+        auto d = v.array(); return (d >= lower_bound).all() && (d < upper_bound.array()).all(); }
  }
 #else // WITH_LINALG_LIB
+# define DATA_INFO(dt, ds) \
+    constexpr static const DataType data_type = DataType::dt; \
+    constexpr static const int data_depth = ds
+ struct Vector2f;
  struct Vector2i : linalg::aliases::int2 {
      typedef int entry_type;
      typedef linalg::aliases::int2 base_type;
      Vector2i(int a = 0) : base_type(a, a) {}
      Vector2i(int x, int y) : base_type(x, y) {}
      Vector2i(base_type v) : base_type(v) {}
+     explicit Vector2i(const Vector2f &v);
      int &x() { return base_type::x; }
      int &y() { return base_type::y; }
      int x() const { return base_type::x; }
      int y() const { return base_type::y; }
+     int &width() { return base_type::x; }
+     int &height() { return base_type::y; }
+     int width() const { return base_type::x; }
+     int height() const { return base_type::y; }
      const base_type &base() const { return *static_cast<const base_type*>(this); }
+     DATA_INFO(Int32, 1);
  };
  using Vector3i     = linalg::aliases::int3;
  using Vector4i     = linalg::aliases::int4;
@@ -338,12 +368,18 @@ enum class Cursor {
      float &y() { return linalg::aliases::float2::y; }
      float x() const { return base_type::x; }
      float y() const { return base_type::y; }
+     float &width() { return base_type::x; }
+     float &height() { return base_type::y; }
+     float width() const { return base_type::x; }
+     float height() const { return base_type::y; }
      const base_type &base() const { return *static_cast<const base_type*>(this); }
+     const Vector2i &toVector2i() const { return Vector2i(base_type::x, base_type::y); }
+     DATA_INFO(Float32, 1);
  };
  struct Vector3f : linalg::aliases::float3 {
      typedef float entry_type;
      typedef linalg::aliases::float3 base_type;
-     Vector3f(float a) : base_type(a, a, a) {}
+     explicit Vector3f(float a) : base_type(a, a, a) {}
      Vector3f(float x, float y, float z) : base_type(x, y, z) {}
      Vector3f(base_type v) : base_type(v) {}
      Vector3f(const Vector3i &v) : base_type(v) {}
@@ -354,11 +390,12 @@ enum class Cursor {
      float y() const { return base_type::y; }
      float z() const { return base_type::z; }
      const base_type &base() const { return *static_cast<const base_type*>(this); }
+     DATA_INFO(Float32, 1);
  };
  struct Vector4f : linalg::aliases::float4 {
      typedef float entry_type;
      typedef linalg::aliases::float4 base_type;
-     Vector4f(float a) : base_type(a, a, a, a) {}
+     explicit Vector4f(float a) : base_type(a, a, a, a) {}
      Vector4f(float x, float y, float z, float w) : base_type(x, y, z, w) {}
      Vector4f(base_type v) : base_type(v) {}
      Vector4f(const Vector4i &v) : base_type(v) {}
@@ -371,37 +408,162 @@ enum class Cursor {
      float z() const { return base_type::z; }
      float w() const { return base_type::w; }
      const base_type &base() const { return *static_cast<const base_type*>(this); }
+     DATA_INFO(Float32, 1);
  };
  using Matrix2f     = linalg::aliases::float2x2;
  using Matrix3f     = linalg::aliases::float3x3;
- using Matrix4f     = linalg::aliases::float4x4;
- using Quaternion4f = linalg::aliases::float4;
+ struct Matrix4f : linalg::aliases::float4x4 {
+     typedef float entry_type;
+     typedef linalg::aliases::float4x4 base_type;
+     Matrix4f() : base_type() {}
+     Matrix4f(const Vector4f & x_, const Vector4f & y_, const Vector4f & z_, const Vector4f & w_) : base_type(x_, y_, z_, w_) {}
+     Matrix4f(base_type v) : base_type(v) {}
+     const base_type &base() const { return *static_cast<const base_type*>(this); }
+     DATA_INFO(Float32, 2);
+ };
+ struct Quaternion4f : linalg::aliases::float4 {
+     typedef float entry_type;
+     typedef linalg::aliases::float4 base_type;
+     Quaternion4f() : base_type() {}
+     Quaternion4f(float a) : base_type(a, a, a, a) {}
+     Quaternion4f(base_type v) : base_type(v) {}
+     const base_type &base() const { return *static_cast<const base_type*>(this); }
+     DATA_INFO(Float32, 1);
+ };
+
+ inline Vector2i::Vector2i(const Vector2f &v) : base_type(v) {}
+
  static bool operator == (const Vector2i& a, const Vector2i& b) { return linalg::compare(a.base(), b.base()) == 0; }
  static bool operator != (const Vector2i& a, const Vector2i& b) { return linalg::compare(a.base(), b.base()) != 0; }
+ static bool operator != (const Vector4f& a, const Vector4f& b) { return linalg::compare(a.base(), b.base()) != 0; }
  static bool operator < (const Vector2i& a, const Vector2i& b) { return linalg::compare(a.base(), b.base()) < 0; }
- static bool operator >= (const Vector2i& a, const int b) { return linalg::compare(a.base(), linalg::aliases::int2(b,b)) >= 0; }
- static bool operator >= (const Vector2f& a, const int b) { return linalg::compare(a.base(), linalg::aliases::float2(b,b)) >= 0; }
+ static bool operator < (const Vector2f& a, const Vector2f& b) { return linalg::compare(a.base(), b.base()) < 0; }
+ static bool operator > (const Vector3f& a, const float b) { return linalg::compare(a.base(), linalg::aliases::float3(b)) > 0; }
+ static bool operator >= (const Vector2i& a, const int b) { return linalg::compare(a.base(), linalg::aliases::int2(b)) >= 0; }
+ static bool operator >= (const Vector2f& a, const Vector2f& b) { return linalg::compare(a.base(), b.base()) >= 0; }
+ static bool operator >= (const Vector2f& a, const int b) { return linalg::compare(a.base(), linalg::aliases::float2(b)) >= 0; }
+ static Vector2i operator - (const Vector2i& v) { return linalg::apply(linalg::detail::op_neg{}, v.base()); }
+ static Vector3f operator - (const Vector3f& v) { return linalg::apply(linalg::detail::op_neg{}, v.base()); }
  static Vector2i operator + (const Vector2i& a, const Vector2i& b) { return linalg::apply(linalg::detail::op_add{}, a.base(), b.base()); }
  static Vector2f operator + (const Vector2f& a, const Vector2f& b) { return linalg::apply(linalg::detail::op_add{}, a.base(), b.base()); }
- static Vector2i operator * (const Vector2i& a, const Vector2i& b) { return linalg::apply(linalg::detail::op_add{}, a.base(), b.base()); }
+ static Vector3f operator + (const Vector3f& a, float b) { return linalg::apply(linalg::detail::op_add{}, a.base(), b); }
+ static Vector3f operator + (const Vector3f& a, const Vector3f& b) { return linalg::apply(linalg::detail::op_add{}, a.base(), b.base()); }
+ static Vector4f operator + (const Vector4f& a, float b) { return linalg::apply(linalg::detail::op_add{}, a.base(), b); }
+ static Vector4f operator + (const Vector4f& a, const Vector4f& b) { return linalg::apply(linalg::detail::op_add{}, a.base(), b.base()); }
+ static Vector2f operator * (const Vector2i& a, float b) { return linalg::apply(linalg::detail::op_mul{}, a.base(), b); }
+ static Vector2i operator * (const Vector2i& a, const Vector2i& b) { return linalg::apply(linalg::detail::op_mul{}, a.base(), b.base()); }
+ static Vector2f operator * (const Vector2f& a, const Vector2f& b) { return linalg::apply(linalg::detail::op_mul{}, a.base(), b.base()); }
+ static Vector3f operator * (const Vector3f& a, float b) { return linalg::apply(linalg::detail::op_mul{}, a.base(), b); }
+ static Vector3f operator * (const Vector3f& a, const Vector3f& b) { return linalg::apply(linalg::detail::op_mul{}, a.base(), b.base()); }
+ static Vector4f operator * (const Vector4f& a, float b) { return linalg::apply(linalg::detail::op_mul{}, a.base(), b); }
+ static Matrix4f operator * (const Matrix4f& a, const Matrix4f& b) { return linalg::mul(a.base(), b.base()); }
+ static Quaternion4f operator * (const Quaternion4f& a, const Quaternion4f& b) { return linalg::apply(linalg::detail::op_mul{}, a.base(), b.base()); }
  static Vector2f operator - (const Vector2f& a, const Vector2f& b) { return linalg::apply(linalg::detail::op_sub{}, a.base(), b.base()); }
  static Vector2i operator - (const Vector2i& a, const Vector2i& b) { return linalg::apply(linalg::detail::op_sub{}, a.base(), b.base()); }
- static Vector2i operator / (const Vector2i& a, const int b) { return linalg::apply(linalg::detail::op_div{}, a.base(), b); }
- static Vector2f operator / (const Vector2f& a, const float b) { return linalg::apply(linalg::detail::op_div{}, a.base(), b); }
- static Vector2f operator * (const Vector2f& a, const float b) { return linalg::apply(linalg::detail::op_mul{}, a.base(), b); }
- static Vector3f operator / (const Vector3f& a, const float b) { return linalg::apply(linalg::detail::op_div{}, a.base(), b); }
- static Vector4f operator / (const Vector4f& a, const float b) { return linalg::apply(linalg::detail::op_div{}, a.base(), b); }
+ static Vector3f operator - (const Vector3f& a, const Vector3f& b) { return linalg::apply(linalg::detail::op_sub{}, a.base(), b.base()); }
+ static Vector2i operator / (const Vector2i& a, const Vector2i& b) { return linalg::apply(linalg::detail::op_div{}, a.base(), b.base()); }
+ static Vector2f operator / (const Vector2f& a, const Vector2f& b) { return linalg::apply(linalg::detail::op_div{}, a.base(), b.base()); }
+ static Vector3f operator / (const Vector3f& a, float b) { return linalg::apply(linalg::detail::op_div{}, a.base(), b); }
+ static Vector3f operator / (const Vector3f& a, const Vector3f& b) { return linalg::apply(linalg::detail::op_div{}, a.base(), b.base()); }
+ static Vector4f operator / (const Vector4f& a, float b) { return linalg::apply(linalg::detail::op_div{}, a.base(), b); }
+ static Vector4f operator / (const Vector4f& a, const Vector4f& b) { return linalg::apply(linalg::detail::op_div{}, a.base(), b.base()); }
  static Vector2i max(const Vector2i& a, const Vector2i& b) { return linalg::apply(linalg::detail::max{}, a.base(), b.base()); }
  static Vector2i min(const Vector2i& a, const Vector2i& b) { return linalg::apply(linalg::detail::min{}, a.base(), b.base()); }
  namespace nutils {
+    template <typename Array> using entry_t = typename Array::entry_type; // Value trait to access the entry type of a array
+    template <typename Matrix> using column_t = typename Matrix::V;       // Value trait to access the column type of a matrix
+
+    template <typename T> constexpr size_t array_depth_v = T::data_depth;
+    template <> constexpr size_t array_depth_v<float> = 0;
+    template <typename T> constexpr DataType array_type_v = T::data_type;
+    template <> constexpr DataType array_type_v<float> = DataType::Float32;
+
     static inline bool all(const bool &v) { return v; }
     template<typename T> bool contains(const T &v, const T &lower_bound, const T &upper_bound) {
-        return ( linalg::all(greater(v.base(),lower_bound.base())) || linalg::all(linalg::equal(v.base(),lower_bound.base())) ) && linalg::all(linalg::less(v.base(),upper_bound.base())); }
+        return ( linalg::all(gequal(v.base(),lower_bound.base())) && linalg::all(linalg::less(v.base(),upper_bound.base())) ); }
 
-    template<typename T> float dot(const T &a, const T &b) { return linalg::dot(a.base(), b.base()); }
+    template<typename T> T max(const T &a, const T &b) { return linalg::max(a.base(), b.base()); }
+    template<typename T> T min(const T &a, const T &b) { return linalg::min(a.base(), b.base()); }
+    template<typename T> entry_t<T> hmax(const T &v) { return linalg::maxelem(v.base()); }
+    template<typename T> entry_t<T> hmin(const T &v) { return linalg::minelem(v.base()); }
 
-    template <typename T> size_t array_depth_v ;
-    template <typename T> DataType array_type_v;
+    template<typename T> T abs(const T &v) { return linalg::abs(v.base()); }
+    template<typename T> entry_t<T> dot(const T &a, const T &b) { return linalg::dot(a, b); }
+    template<typename T> T cross(const T &a, const T &b) { return linalg::cross(a.base(), b.base()); }
+    template<typename T> T normalize(const T &v) { return linalg::normalize(v.base()); }
+    template<typename T> float norm(const T &v) { return linalg::sqrt(linalg::dot(v.base(), v.base())); }
+    template<typename T> entry_t<T> squared_norm(const T &v) { return linalg::dot(v.base(), v.base()); }
+    template<typename V> auto sincos(const V &v) { return std::make_pair(std::sin(v), std::cos(v)); }
+
+    template <typename T> T identity() { return T(linalg::identity); }
+
+    template <typename Matrix> Matrix diag(const column_t<Matrix> &value) {
+        Matrix result;
+        for (size_t i = 0; i < Matrix::size(); ++i)
+            result[i][i] = value[i];
+        return result;
+    }
+    template <typename Matrix, typename Vector> Matrix translate(const Vector &v) { return linalg::translation_matrix(v); }
+    template <typename Matrix, typename Vector> Matrix scale(const Vector &v) { return linalg::scaling_matrix(v); }
+    template <typename Matrix, typename Vector3> Matrix rotate(const Vector3 &axis, const entry_t<Matrix> &angle) {
+        using Column = column_t<Matrix>;
+        using Value = entry_t<Matrix>;
+
+        Value sin_theta = sin(angle),
+            cos_theta = cos(angle),
+            cos_theta_m = 1.f - cos_theta;
+
+        Vector3 shuf1 = Vector3(axis.y(), axis.z(), axis.x()),
+            shuf2 = Vector3(axis.z(), axis.x(), axis.y()),
+            tmp0  = axis * axis * cos_theta_m + cos_theta,
+            tmp1  = axis * shuf1 * cos_theta_m + shuf2 * sin_theta,
+            tmp2  = axis * shuf2 * cos_theta_m - shuf1 * sin_theta;
+
+        return Matrix(
+            Column(tmp0.x(), tmp1.x(), tmp2.x(), 0.f),
+            Column(tmp2.y(), tmp0.y(), tmp1.y(), 0.f),
+            Column(tmp1.z(), tmp2.z(), tmp0.z(), 0.f),
+            Column(0.f, 0.f, 0.f, 1.f)
+        );
+    }
+
+    inline entry_t<Quaternion4f> abs(const Quaternion4f &q) { return norm(q); }
+# ifdef COMMON_COMPILATION_UNIT
+    template<> Quaternion4f rotate(const Vector3f &axis, const entry_t<Quaternion4f> &angle) { return linalg::rotation_quat(axis, angle); }
+# else
+    template<> Quaternion4f rotate(const Vector3f &axis, const entry_t<Quaternion4f> &angle);
+# endif
+    template<typename M> M quat_to_matrix(const Quaternion4f &q) { return linalg::rotation_matrix(q); }
+
+    template <typename Matrix> Matrix ortho(const entry_t<Matrix> &left, const entry_t<Matrix> &right,
+                                            const entry_t<Matrix> &bottom, const entry_t<Matrix> &top,
+                                            const entry_t<Matrix> &n, const entry_t<Matrix> &f) {
+        return linalg::orthographic_matrix(left, right, bottom, top, n, f, linalg::pos_z);
+    }
+    template <typename Matrix> Matrix perspective(const entry_t<Matrix> &fov,
+                                                  const entry_t<Matrix> &n, const entry_t<Matrix> &f,
+                                                  const entry_t<Matrix> &aspect = 1.f) {
+        return linalg::perspective_matrix(fov, aspect, n, f, linalg::pos_z);
+    }
+    template<typename Matrix, typename Point, typename Vector> Matrix look_at(const Point &origin, const Point &target, const Vector &up) {
+        auto dir = normalize(target - origin);
+        auto left = normalize(cross(dir, up));
+        auto new_up = cross(left, dir);
+
+        using Scalar = entry_t<Matrix>;
+
+        return Matrix(
+            column_t<Matrix>({left, Scalar(0)}),
+            column_t<Matrix>({new_up, Scalar(0)}),
+            column_t<Matrix>({-dir, Scalar(0)}),
+            column_t<Matrix>(
+                -dot(left, origin),
+                -dot(new_up, origin),
+                dot(dir, origin),
+                1.f
+            )
+        );
+    }
  }
 #endif
 
@@ -585,6 +747,10 @@ public:
 
     /// Allows for conversion between this Color and NanoVG's representation.
     inline operator const NVGcolor &() const;
+
+# ifdef DATA_INFO
+    DATA_INFO(Float32, 1);
+# endif
 };
 
 // skip the forward declarations for the docs
