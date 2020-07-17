@@ -73,8 +73,6 @@ Screen::Screen(const Vector2i &size, const std::string &caption, bool resizable,
     while(!QOpenGLContext::currentContext())
         qApp->processEvents();
 
-    m_pixel_ratio = m_qt_window->devicePixelRatio();
-
     qInfo() << "Context ready. Initialize screen";
     QObject::connect(m_qt_dispatch, SIGNAL(requestUpdate()), m_qt_window, SLOT(renderLater()));
     QObject::connect(m_qt_dispatch, SIGNAL(requestResize(int,int)), m_qt_window, SLOT(resizeLater(int,int)));
@@ -220,8 +218,8 @@ void Screen::redraw() {
 void Screen::cursor_pos_callback_event(double x, double y) {
     Vector2i p((int) x, (int) y);
 
-#if defined(_WIN32) || defined(__linux__)
-    p = (p.cast<float>() / m_pixel_ratio).cast<int>();
+#if defined(_WIN32) || defined(__linux__) || defined(EMSCRIPTEN)
+    p = Vector2i(Vector2f(p) / m_pixel_ratio);
 #endif
 
     bool ret = false;
@@ -346,8 +344,9 @@ void Screen::scroll_callback_event(double x, double y) {
 void Screen::resize_callback_event(int w, int h) {
 
     Vector2i size(w, h);
-#if defined(_WIN32) || defined(__linux__)
-    size = (size.cast<float>() / m_pixel_ratio).cast<int>();
+
+    #if defined(_WIN32) || defined(__linux__) || defined(EMSCRIPTEN)
+    size = Vector2i(Vector2f(size) / m_pixel_ratio);
 #endif
 
     if (size == m_size && m_pixel_ratio == m_qt_window->devicePixelRatio())

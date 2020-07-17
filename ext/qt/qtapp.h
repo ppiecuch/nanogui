@@ -1,4 +1,3 @@
-#include <qguiapplication.h>
 #include <functional>
 
 #include <qdebug.h>
@@ -6,13 +5,12 @@
 #include <qtimer.h>
 #include <qdiriterator.h>
 #include <qelapsedtimer.h>
+#include <qmutex.h>
 #include <qwaitcondition.h>
 #include <qpainter.h>
 #include <qwindow.h>
 #include <qopengldebug.h>
 #include <qopenglcontext.h>
-#include <qopenglpaintdevice.h>
-#include <qopenglfunctions.h>
 #include <qelapsedtimer.h>
 #include <qwindow.h>
 #include <qguiapplication.h>
@@ -29,7 +27,7 @@ public:
     void CancelSleep() { sleepSimulator.wakeAll(); }
 };
 
-class QNGuiWindow : public QWindow, protected QOpenGLFunctions
+class QNGuiWindow : public QWindow
 {
     Q_OBJECT
 private:
@@ -62,8 +60,8 @@ public:
             m_logger->enableMessages();
             qDebug() << "QOpenGLDebugLogger initialized.";
         }
-        qDebug() << "OpenGL infos with gl functions:";
-        qDebug() << "-------------------------------";
+        qDebug() << "NGui window OpenGL informations:";
+        qDebug() << "--------------------------------";
         qDebug() << " Renderer:" << (const char*)glGetString(GL_RENDERER);
         qDebug() << " Vendor:" << (const char*)glGetString(GL_VENDOR);
         qDebug() << " OpenGL Version:" << (const char*)glGetString(GL_VERSION);
@@ -73,6 +71,7 @@ public:
     void update() { renderLater(); }
     void render() {
         glViewport(0, 0, width()*devicePixelRatio(), height()*devicePixelRatio());
+#if !defined(QT_NO_OPENGL) && !defined(QT_OPENGL_ES_2) && !defined(QT_OPENGL_ES_3) || defined(OPENGL_GLES_BC)
         glClearColor(0.8, 0.8, 0.8, 1);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
         glMatrixMode(GL_PROJECTION);
@@ -80,6 +79,7 @@ public:
         glOrtho(0, width(), height(), 0, -1, 1);
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
+#endif
         m_sc->draw_now();
     }
     void mousePressEvent(QMouseEvent *event) {
@@ -237,7 +237,6 @@ public Q_SLOTS:
         }
         m_context->makeCurrent(this);
         if (needsInitialize) {
-            initializeOpenGLFunctions();
             initialize();
         }
         render();

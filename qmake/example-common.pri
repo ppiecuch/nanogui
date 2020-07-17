@@ -1,4 +1,4 @@
-CONFIG += debug ngui_with_nfd
+CONFIG += debug ngui_with_nfd ngui_with_qtgl
 SOURCES += ../src/$${TARGET}.cpp
 RESOURCES += resources.qrc
 

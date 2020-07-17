@@ -529,7 +529,7 @@ enum class Cursor {
 
     inline entry_t<Quaternion4f> abs(const Quaternion4f &q) { return norm(q); }
 # ifdef COMMON_COMPILATION_UNIT
-    template<> Quaternion4f rotate(const Vector3f &axis, const entry_t<Quaternion4f> &angle) { return linalg::rotation_quat(axis, angle); }
+    inline template<> Quaternion4f rotate(const Vector3f &axis, const entry_t<Quaternion4f> &angle) { return linalg::rotation_quat(axis, angle); }
 # else
     template<> Quaternion4f rotate(const Vector3f &axis, const entry_t<Quaternion4f> &angle);
 # endif

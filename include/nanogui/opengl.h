@@ -14,7 +14,9 @@
 #pragma once
 
 #if !defined(DOXYGEN_SHOULD_SKIP_THIS)
-#  if defined(QT_GUI_LIB)
+#  if defined(OPENGL_GLES_BC)
+#    include <opengl_gles_bc.h>
+#  elif defined(QT_GUI_LIB)
 #    if defined(NANOGUI_USE_OPENGL) || defined(NANOGUI_USE_GLES)
 #      if defined(__APPLE__)
 #        include <qopengl.h>

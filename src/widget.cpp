@@ -33,6 +33,7 @@ Widget::Widget(Widget *parent)
 }
 
 Widget::~Widget() {
+#if __clang__ && __cpp_lib_uncaught_exceptions
     if (std::uncaught_exceptions() > 0) {
         /* If a widget constructor throws an exception, it is immediately
            dealloated but may still be referenced by a parent. Be conservative
@@ -40,6 +41,7 @@ Widget::~Widget() {
            exceptions. */
         return;
     }
+#endif
     for (auto child : m_children) {
         if (child)
             child->dec_ref();

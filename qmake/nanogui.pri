@@ -1,4 +1,10 @@
 
+# ngui_with_qtgl   - force to add qtgl.cpp wrappr
+# ngui_with_enoki
+# ngui_with_eigen
+# ngui_with_linalg
+# ngui_with_nfd
+
 ngui_with_enoki|ngui_with_eigen|ngui_with_linalg {
     # use provided configuration
 } else {
@@ -43,12 +49,14 @@ SOURCES += \
   $$NGUIRT/src/texture.cpp \
   $$NGUIRT/src/texture_gl.cpp
 
-macx|ios {
+macos|ios {
     OBJECTIVE_SOURCES += $$NGUIRT/src/darwin.mm
     LIBS += -framework Foundation -framework AppKit
 } else {
-    HEADERS += $$NGUIRT/include/nanogui/qtgl.h
-    SOURCES += $$NGUIRT/src/qtgl.cpp
+    CONFIG(ngui_with_qtgl):!ios:!android {
+        HEADERS += $$NGUIRT/include/nanogui/qtgl.h
+        SOURCES += $$NGUIRT/src/qtgl.cpp
+    }
 }
 
 HEADERS += \
@@ -105,7 +113,7 @@ CONFIG(ngui_with_nfd) {
         $$NGUIRT/ext/nativefiledialog/src/nfd_common.h
     SOURCES += \
         $$NGUIRT/ext/nativefiledialog/src/nfd_common.c
-    macx {
+    macos {
         OBJECTIVE_SOURCES += $$NGUIRT/ext/nativefiledialog/src/nfd_cocoa.m
         LIBS += -framework AppKit
     }
@@ -115,7 +123,13 @@ CONFIG(ngui_with_nfd) {
     DEFINES += NGUI_NFD
 }
 
-DEFINES += NANOGUI_USE_GLES NANOGUI_USE_GLES2
+ios|android|CONFIG(opengl_gles_bc) {
+    DEFINES += NANOGUI_USE_GLES
+    CONFIG(ngui_with_gles3): DEFINES += NANOGUI_USE_GLES3 NANOGUI_GLES_VERSION=3
+    else: DEFINES += NANOGUI_USE_GLES2 NANOGUI_GLES_VERSION=2
+} else {
+    DEFINES += NANOGUI_USE_OPENGL
+}
 
 isEmpty(COMMON_ROOT) {
     exists($$(HOME)/Private/Projekty/common-src-runtime): COMMON_ROOT = $$(HOME)/Private/Projekty/common-src-runtime
