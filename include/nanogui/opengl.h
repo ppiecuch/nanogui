@@ -13,6 +13,8 @@
 
 #pragma once
 
+#include <nanogui/vector.h>
+
 #if !defined(DOXYGEN_SHOULD_SKIP_THIS)
 #  if defined(OPENGL_GLES_BC)
 #    include <opengl_gles_bc.h>
@@ -84,7 +86,7 @@ NAMESPACE_BEGIN(nanogui)
 
 /// Allows for conversion between nanogui::Color and the NanoVG NVGcolor class.
 inline Color::operator const NVGcolor &() const {
-    return reinterpret_cast<const NVGcolor &>(*this->data());
+    return reinterpret_cast<const NVGcolor &>(*(this->v));
 }
 
 /**

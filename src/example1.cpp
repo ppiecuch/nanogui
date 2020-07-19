@@ -37,6 +37,8 @@
 #include <nanogui/texture.h>
 #include <nanogui/shader.h>
 #include <nanogui/renderpass.h>
+#include <iostream>
+#include <memory>
 #include <stb_image.h>
 
 #ifdef QT_GUI_LIB
@@ -525,8 +527,8 @@ public:
             -1.f, 1.f, 0.f
         };
 
-        m_shader->set_buffer("indices", DataType::UInt32, 1, {3*2, 1, 1}, indices);
-        m_shader->set_buffer("position", DataType::Float32, 2, {4, 3, 1}, positions);
+        m_shader->set_buffer("indices", VariableType::UInt32, {3*2}, indices);
+        m_shader->set_buffer("position", VariableType::Float32, {4, 3}, positions);
         m_shader->set_uniform("intensity", 0.5f);
     }
 
@@ -549,9 +551,10 @@ public:
     }
 
     virtual void draw_contents() {
-        Matrix4f mvp = nutils::scale<Matrix4f>(Vector3f(
+        Matrix4f mvp = Matrix4f::scale(Vector3f(
                            (float) m_size.y() / (float) m_size.x() * 0.25f, 0.25f, 0.25f)) *
-                       nutils::rotate<Matrix4f>(Vector3f(0, 0, 1), (float) sysGetTime());
+                       Matrix4f::rotate(Vector3f(0, 0, 1), (float) sysGetTime());
+
         m_shader->set_uniform("mvp", mvp);
 
         m_render_pass->resize(framebuffer_size());
@@ -589,7 +592,7 @@ int main(int argc, char **argv) {
         }
 
         nanogui::shutdown();
-    } catch (const std::runtime_error &e) {
+    } catch (const std::exception &e) {
         std::string error_msg = std::string("Caught a fatal error: ") + std::string(e.what());
         #if defined(_WIN32)
             MessageBoxA(nullptr, error_msg.c_str(), NULL, MB_ICONERROR | MB_OK);
@@ -597,6 +600,8 @@ int main(int argc, char **argv) {
             std::cerr << error_msg << std::endl;
         #endif
         return -1;
+    } catch (...) {
+        std::cerr << "Caught an unknown error!" << std::endl;
     }
 
     return 0;

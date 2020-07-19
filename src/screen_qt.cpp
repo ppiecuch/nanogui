@@ -1,7 +1,8 @@
 /*
-    src/screen.cpp -- Top-level widget and interface between NanoGUI and GLFW
+    src/screen_qt.cpp -- Top-level widget and interface between NanoGUI and Qt
 
     A significant redesign of this code was contributed by Christian Schueller.
+    A significant redesign of this code was contributed by Pawel Piecuch.
 
     NanoGUI was developed by Wenzel Jakob <wenzel.jakob@epfl.ch>.
     The widget drawing code is based on the NanoVG demo application
@@ -112,6 +113,12 @@ void Screen::clear() {
 
 void Screen::draw_contents() {
     clear();
+}
+
+void Screen::draw_setup() {
+}
+
+void Screen::draw_teardown() {
 }
 
 void Screen::nvg_flush() {

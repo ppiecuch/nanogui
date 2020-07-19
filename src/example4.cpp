@@ -18,6 +18,7 @@
 #include <nanogui/canvas.h>
 #include <nanogui/shader.h>
 #include <nanogui/renderpass.h>
+#include <iostream>
 
 #if defined(_WIN32)
 #  if defined(APIENTRY)
@@ -32,19 +33,21 @@ using nanogui::Shader;
 using nanogui::Canvas;
 using nanogui::ref;
 
+constexpr float Pi = 3.14159f;
+
 class MyCanvas : public Canvas {
 public:
-    MyCanvas(Widget *parent) : Canvas(parent), m_rotation(0.f) {
+    MyCanvas(Widget *parent) : Canvas(parent, 1), m_rotation(0.f) {
         using namespace nanogui;
 
         m_shader = new Shader(
             render_pass(),
 
-            /* An identifying name */
+            // An identifying name
             "a_simple_shader",
 
 #if defined(NANOGUI_USE_OPENGL)
-            /* Vertex shader */
+            // Vertex shader
             R"(#version 330
             uniform mat4 mvp;
             in vec3 position;
@@ -55,7 +58,7 @@ public:
                 gl_Position = mvp * vec4(position, 1.0);
             })",
 
-            /* Fragment shader */
+            // Fragment shader
             R"(#version 330
             out vec4 color;
             in vec4 frag_color;
@@ -63,7 +66,7 @@ public:
                 color = frag_color;
             })"
 #elif defined(NANOGUI_USE_GLES)
-            /* Vertex shader */
+            // Vertex shader
             R"(precision highp float;
             uniform mat4 mvp;
             attribute vec3 position;
@@ -74,14 +77,14 @@ public:
                 gl_Position = mvp * vec4(position, 1.0);
             })",
 
-            /* Fragment shader */
+            // Fragment shader
             R"(precision highp float;
             varying vec4 frag_color;
             void main() {
                 gl_FragColor = frag_color;
             })"
 #elif defined(NANOGUI_USE_METAL)
-            /* Vertex shader */
+            // Vertex shader
             R"(using namespace metal;
 
             struct VertexOut {
@@ -136,9 +139,9 @@ public:
             1, 0, 0, 1, 1, 0
         };
 
-        m_shader->set_buffer("indices", DataType::UInt32, 1, {3*12, 1, 1}, indices);
-        m_shader->set_buffer("position", DataType::Float32, 2, {8, 3, 1}, positions);
-        m_shader->set_buffer("color", DataType::Float32, 2, {8, 3, 1}, colors);
+        m_shader->set_buffer("indices", VariableType::UInt32, {3*12}, indices);
+        m_shader->set_buffer("position", VariableType::Float32, {8, 3}, positions);
+        m_shader->set_buffer("color", VariableType::Float32, {8, 3}, colors);
     }
 
     void set_rotation(float rotation) {
@@ -148,24 +151,24 @@ public:
     virtual void draw_contents() override {
         using namespace nanogui;
 
-        Matrix4f view = nutils::look_at<Matrix4f>(
+        Matrix4f view = Matrix4f::look_at(
             Vector3f(0, -2, -10),
             Vector3f(0, 0, 0),
             Vector3f(0, 1, 0)
         );
 
-        Matrix4f model = nutils::rotate<Matrix4f>(
+        Matrix4f model = Matrix4f::rotate(
             Vector3f(0, 1, 0),
             (float) sysGetTime()
         );
 
-        Matrix4f model2 = nutils::rotate<Matrix4f>(
+        Matrix4f model2 = Matrix4f::rotate(
             Vector3f(1, 0, 0),
             m_rotation
         );
 
-        Matrix4f proj = nutils::perspective<Matrix4f>(
-            float(25 * M_PI / 180),
+        Matrix4f proj = Matrix4f::perspective(
+            float(25 * Pi / 180),
             0.1f,
             20.f,
             m_size.x() / (float) m_size.y()
@@ -175,7 +178,7 @@ public:
 
         m_shader->set_uniform("mvp", mvp);
 
-        /* Draw 12 triangles starting at index 0 */
+        // Draw 12 triangles starting at index 0
         m_shader->begin();
         m_shader->draw_array(Shader::PrimitiveType::Triangle, 0, 12*3, true);
         m_shader->end();
@@ -203,7 +206,7 @@ public:
         tools->set_layout(new BoxLayout(Orientation::Horizontal,
                                        Alignment::Middle, 0, 5));
 
-        Button *b0 = new Button(tools, "Random Color");
+        Button *b0 = new Button(tools, "Random Background");
         b0->set_callback([this]() {
             m_canvas->set_background_color(
                 Vector4i(rand() % 256, rand() % 256, rand() % 256, 255));
@@ -211,7 +214,7 @@ public:
 
         Button *b1 = new Button(tools, "Random Rotation");
         b1->set_callback([this]() {
-            m_canvas->set_rotation((float) M_PI * rand() / (float) RAND_MAX);
+            m_canvas->set_rotation((float) Pi * rand() / (float) RAND_MAX);
         });
 
         perform_layout();
@@ -228,7 +231,7 @@ public:
     }
 
     virtual void draw(NVGcontext *ctx) {
-        /* Draw the user interface */
+        // Draw the user interface
         Screen::draw(ctx);
     }
 private:

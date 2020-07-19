@@ -14,25 +14,24 @@
 
 #pragma once
 
-#if defined(WITH_ENOKI_LIB)
-# include <enoki/array.h>
-# include <enoki/transform.h>
-#elif defined(WITH_EIGEN_LIB)
-# include <Eigen/Core>
-#else
-# ifndef WITH_LINALG_LIB
-#  define WITH_LINALG_LIB
-# endif
-# include <algebra/linalg.h>
-# include <algebra/c++.h>
-#endif
 #include <stdint.h>
-#include <array>
-#include <vector>
 #include <functional>
+#include <vector>
+#include <string>
+#include <stdexcept>
 
 #ifdef QT_GUI_LIB
 # include <qnamespace.h>
+#endif
+
+#if ((defined(_MSVC_LANG) && _MSVC_LANG >= 201703L) || __cplusplus >= 201703L)
+# define CPP17
+#endif
+#if ((defined(_MSVC_LANG) && _MSVC_LANG >= 201402L) || __cplusplus >= 201402L)
+# define CPP14
+#endif
+#if ((defined(_MSVC_LANG) && _MSVC_LANG >= 201103L) || __cplusplus >= 201103L)
+# define CPP11
 #endif
 
 /* Set to 1 to draw boxes around widgets */
@@ -212,46 +211,6 @@ struct GLFWcursor;
 
 NAMESPACE_BEGIN(nanogui)
 
-/// Common data formats for images/textures
-enum class DataType : uint8_t {
-    // Signed and unsigned integer formats
-#if defined(WITH_ENOKI_LIB)
-    Invalid = (uint8_t) enoki::EnokiType::Invalid,
-
-    Bool    = (uint8_t) enoki::EnokiType::Bool,
-    UInt8   = (uint8_t) enoki::EnokiType::UInt8,
-    Int8    = (uint8_t) enoki::EnokiType::Int8,
-    UInt16  = (uint8_t) enoki::EnokiType::UInt16,
-    Int16   = (uint8_t) enoki::EnokiType::Int16,
-    UInt32  = (uint8_t) enoki::EnokiType::UInt32,
-    Int32   = (uint8_t) enoki::EnokiType::Int32,
-    UInt64  = (uint8_t) enoki::EnokiType::UInt64,
-    Int64   = (uint8_t) enoki::EnokiType::Int64,
-
-    // Floating point formats
-    Float16 = (uint8_t) enoki::EnokiType::Float16,
-    Float32 = (uint8_t) enoki::EnokiType::Float32,
-    Float64 = (uint8_t) enoki::EnokiType::Float64
-#else
-    Invalid,
-
-    Bool,
-    UInt8,
-    Int8,
-    UInt16,
-    Int16,
-    UInt32,
-    Int32,
-    UInt64,
-    Int64,
-
-    // Floating point formats
-    Float16,
-    Float32,
-    Float64
-#endif
-};
-
 /// Cursor shapes available to use in GLFW/Qt.  Shape of actual cursor determined by Operating System.
 enum class Cursor {
     Arrow = 0,  ///< The arrow cursor.
@@ -263,502 +222,13 @@ enum class Cursor {
     CursorCount ///< Not a cursor --- should always be last: enables a loop over the cursor types.
 };
 
-/* Import some common vector types */
-#if defined(WITH_ENOKI_LIB)
- using Vector2f     = enoki::Array<float, 2>;
- using Vector3f     = enoki::Array<float, 3>;
- using Vector4f     = enoki::Array<float, 4>;
- using Vector2i     = enoki::Array<int32_t, 2>;
- using Vector3i     = enoki::Array<int32_t, 3>;
- using Vector4i     = enoki::Array<int32_t, 4>;
- using Matrix2f     = enoki::Matrix<float, 2>;
- using Matrix3f     = enoki::Matrix<float, 3>;
- using Matrix4f     = enoki::Matrix<float, 4>;
- using Quaternion4f = enoki::Quaternion<float>;
-
- namespace nutils {
-    template<typename T> constexpr size_t array_depth_v = enoki::array_depth_v<T>;
-    template<typename T> constexpr DataType array_type_v = static_cast<DataType>(enoki::enoki_type_v<enoki::scalar_t<T>>);
-
-    template<typename T> bool all(const T &v) { return enoki::all(v); }
-    template<typename T> bool contains(const T &v, const T &lower_bound, const T &upper_bound) { return enoki::all(v >= lower_bound) && enoki::all(v < upper_bound); }
-
-    template<typename T> auto abs(const T &v) { return enoki::abs(v); }
-    template<typename T> enoki::scalar_t<T> dot(const T &a, const T &b) { return enoki::dot(a, b); }
-    template<typename T> T cross(const T &a, const T &b) { return enoki::cross(a, b); }
-    template<typename T> T normalize(const T &v) { return enoki::normalize(v); }
-    template<typename T> enoki::scalar_t<T> norm(const T &v) { return enoki::norm(v); }
-    template<typename T> auto squared_norm(const T &v) { return enoki::squared_norm(v); }
-    template<typename V> auto sincos(const V &v) { return enoki::sincos(v); }
-    template<typename T> enoki::scalar_t<T> hmax(const T &v) { return enoki::hmax(v); }
-    template<typename T> enoki::scalar_t<T> hmin(const T &v) { return enoki::hmin(v); }
-
-    template<typename T> const T identity() { return enoki::identity<T>(); }
-
-    template <typename Matrix, typename Vector> Matrix translate(const Vector &v) { return enoki::translate<Matrix>(v); }
-    template <typename Matrix, typename Vector> Matrix scale(const Vector &v) { return enoki::scale<Matrix>(v); }
-    template <typename Matrix, typename Vector3> Matrix rotate(const Vector3 &axis, const enoki::entry_t<Matrix> &angle) { return enoki::rotate<Matrix>(axis, angle); }
-
-    template <typename Quat, typename Vector3> Quat rotate(const Vector3 &axis, const enoki::value_t<Quat> &angle) { return enoki::rotate<Quat>(axis, angle); }
-    template<typename Matrix, typename Quat> Matrix quat_to_matrix(const Quat &q) { return enoki::quat_to_matrix<Matrix>(q); }
-
-    template <typename Matrix> Matrix ortho(const enoki::entry_t<Matrix> &left, const enoki::entry_t<Matrix> &right,
-                                            const enoki::entry_t<Matrix> &bottom, const enoki::entry_t<Matrix> &top,
-                                            const enoki::entry_t<Matrix> &near_, const enoki::entry_t<Matrix> &far_) {
-        return enoki::ortho<Matrix>(left, right, bottom, top, near_, far_); }
-    template <typename Matrix> Matrix perspective(const enoki::entry_t<Matrix> &fov,
-                                                  const enoki::entry_t<Matrix> &near_, const enoki::entry_t<Matrix> &far_,
-                                                  const enoki::entry_t<Matrix> &aspect = 1.f) {
-        return enoki::perspective<Matrix>(fov, near_, far_, aspect); }
-    template <typename Matrix, typename Point, typename Vector> Matrix look_at(const Point &origin, const Point &target, const Vector &up) {
-        return enoki::look_at<Matrix>(origin, target, up); }
- }
-#elif defined(WITH_EIGEN_LIB)
- using Vector2f = Eigen::Vector2f;
- using Vector3f = Eigen::Vector3f;
- using Vector4f = Eigen::Vector4f;
- using Vector2i = Eigen::Vector2i;
- using Vector3i = Eigen::Vector3i;
- using Vector4i = Eigen::Vector4i;
- using Matrix3f = Eigen::Matrix3f;
- using Matrix4f = Eigen::Matrix4f;
- using VectorXf = Eigen::VectorXf;
- using MatrixXf = Eigen::MatrixXf;
-
- using MatrixXu = Eigen::Matrix<uint32_t, Eigen::Dynamic, Eigen::Dynamic>;
-
- namespace nutils {
-    template<typename T> bool all(const T &v) { return all(v); }
-    template<typename T> bool contains(const T &v, const T &lower_bound, const T &upper_bound) {
-        auto d = v.array(); return (d >= lower_bound).all() && (d < upper_bound.array()).all(); }
- }
-#else // WITH_LINALG_LIB
-# define DATA_INFO(dt, ds) \
-    constexpr static const DataType data_type = DataType::dt; \
-    constexpr static const int data_depth = ds
- struct Vector2f;
- struct Vector2i : linalg::aliases::int2 {
-     typedef int entry_type;
-     typedef linalg::aliases::int2 base_type;
-     Vector2i(int a = 0) : base_type(a, a) {}
-     Vector2i(int x, int y) : base_type(x, y) {}
-     Vector2i(base_type v) : base_type(v) {}
-     explicit Vector2i(const Vector2f &v);
-     int &x() { return base_type::x; }
-     int &y() { return base_type::y; }
-     int x() const { return base_type::x; }
-     int y() const { return base_type::y; }
-     int &width() { return base_type::x; }
-     int &height() { return base_type::y; }
-     int width() const { return base_type::x; }
-     int height() const { return base_type::y; }
-     const base_type &base() const { return *static_cast<const base_type*>(this); }
-     DATA_INFO(Int32, 1);
- };
- using Vector3i     = linalg::aliases::int3;
- using Vector4i     = linalg::aliases::int4;
- struct Vector2f : linalg::aliases::float2 {
-     typedef float entry_type;
-     typedef linalg::aliases::float2 base_type;
-     Vector2f(float a) : base_type(a, a) {}
-     Vector2f(float x, float y) : base_type(x, y) {}
-     Vector2f(base_type v) : base_type(v) {}
-     Vector2f(const Vector2i &v) : base_type(v) {}
-     float &x() { return base_type::x; }
-     float &y() { return linalg::aliases::float2::y; }
-     float x() const { return base_type::x; }
-     float y() const { return base_type::y; }
-     float &width() { return base_type::x; }
-     float &height() { return base_type::y; }
-     float width() const { return base_type::x; }
-     float height() const { return base_type::y; }
-     const base_type &base() const { return *static_cast<const base_type*>(this); }
-     const Vector2i &toVector2i() const { return Vector2i(base_type::x, base_type::y); }
-     DATA_INFO(Float32, 1);
- };
- struct Vector3f : linalg::aliases::float3 {
-     typedef float entry_type;
-     typedef linalg::aliases::float3 base_type;
-     explicit Vector3f(float a) : base_type(a, a, a) {}
-     Vector3f(float x, float y, float z) : base_type(x, y, z) {}
-     Vector3f(base_type v) : base_type(v) {}
-     Vector3f(const Vector3i &v) : base_type(v) {}
-     float &x() { return base_type::x; }
-     float &y() { return base_type::y; }
-     float &z() { return base_type::z; }
-     float x() const { return base_type::x; }
-     float y() const { return base_type::y; }
-     float z() const { return base_type::z; }
-     const base_type &base() const { return *static_cast<const base_type*>(this); }
-     DATA_INFO(Float32, 1);
- };
- struct Vector4f : linalg::aliases::float4 {
-     typedef float entry_type;
-     typedef linalg::aliases::float4 base_type;
-     explicit Vector4f(float a) : base_type(a, a, a, a) {}
-     Vector4f(float x, float y, float z, float w) : base_type(x, y, z, w) {}
-     Vector4f(base_type v) : base_type(v) {}
-     Vector4f(const Vector4i &v) : base_type(v) {}
-     float &x() { return base_type::x; }
-     float &y() { return base_type::y; }
-     float &z() { return base_type::z; }
-     float &w() { return base_type::w; }
-     float x() const { return base_type::x; }
-     float y() const { return base_type::y; }
-     float z() const { return base_type::z; }
-     float w() const { return base_type::w; }
-     const base_type &base() const { return *static_cast<const base_type*>(this); }
-     DATA_INFO(Float32, 1);
- };
- using Matrix2f     = linalg::aliases::float2x2;
- using Matrix3f     = linalg::aliases::float3x3;
- struct Matrix4f : linalg::aliases::float4x4 {
-     typedef float entry_type;
-     typedef linalg::aliases::float4x4 base_type;
-     Matrix4f() : base_type() {}
-     Matrix4f(const Vector4f & x_, const Vector4f & y_, const Vector4f & z_, const Vector4f & w_) : base_type(x_, y_, z_, w_) {}
-     Matrix4f(base_type v) : base_type(v) {}
-     const base_type &base() const { return *static_cast<const base_type*>(this); }
-     DATA_INFO(Float32, 2);
- };
- struct Quaternion4f : linalg::aliases::float4 {
-     typedef float entry_type;
-     typedef linalg::aliases::float4 base_type;
-     Quaternion4f() : base_type() {}
-     Quaternion4f(float a) : base_type(a, a, a, a) {}
-     Quaternion4f(base_type v) : base_type(v) {}
-     const base_type &base() const { return *static_cast<const base_type*>(this); }
-     DATA_INFO(Float32, 1);
- };
-
- inline Vector2i::Vector2i(const Vector2f &v) : base_type(v) {}
-
- static bool operator == (const Vector2i& a, const Vector2i& b) { return linalg::compare(a.base(), b.base()) == 0; }
- static bool operator != (const Vector2i& a, const Vector2i& b) { return linalg::compare(a.base(), b.base()) != 0; }
- static bool operator != (const Vector4f& a, const Vector4f& b) { return linalg::compare(a.base(), b.base()) != 0; }
- static bool operator < (const Vector2i& a, const Vector2i& b) { return linalg::compare(a.base(), b.base()) < 0; }
- static bool operator < (const Vector2f& a, const Vector2f& b) { return linalg::compare(a.base(), b.base()) < 0; }
- static bool operator > (const Vector3f& a, const float b) { return linalg::compare(a.base(), linalg::aliases::float3(b)) > 0; }
- static bool operator >= (const Vector2i& a, const int b) { return linalg::compare(a.base(), linalg::aliases::int2(b)) >= 0; }
- static bool operator >= (const Vector2f& a, const Vector2f& b) { return linalg::compare(a.base(), b.base()) >= 0; }
- static bool operator >= (const Vector2f& a, const int b) { return linalg::compare(a.base(), linalg::aliases::float2(b)) >= 0; }
- static Vector2i operator - (const Vector2i& v) { return linalg::apply(linalg::detail::op_neg{}, v.base()); }
- static Vector3f operator - (const Vector3f& v) { return linalg::apply(linalg::detail::op_neg{}, v.base()); }
- static Vector2i operator + (const Vector2i& a, const Vector2i& b) { return linalg::apply(linalg::detail::op_add{}, a.base(), b.base()); }
- static Vector2f operator + (const Vector2f& a, const Vector2f& b) { return linalg::apply(linalg::detail::op_add{}, a.base(), b.base()); }
- static Vector3f operator + (const Vector3f& a, float b) { return linalg::apply(linalg::detail::op_add{}, a.base(), b); }
- static Vector3f operator + (const Vector3f& a, const Vector3f& b) { return linalg::apply(linalg::detail::op_add{}, a.base(), b.base()); }
- static Vector4f operator + (const Vector4f& a, float b) { return linalg::apply(linalg::detail::op_add{}, a.base(), b); }
- static Vector4f operator + (const Vector4f& a, const Vector4f& b) { return linalg::apply(linalg::detail::op_add{}, a.base(), b.base()); }
- static Vector2f operator * (const Vector2i& a, float b) { return linalg::apply(linalg::detail::op_mul{}, a.base(), b); }
- static Vector2i operator * (const Vector2i& a, const Vector2i& b) { return linalg::apply(linalg::detail::op_mul{}, a.base(), b.base()); }
- static Vector2f operator * (const Vector2f& a, const Vector2f& b) { return linalg::apply(linalg::detail::op_mul{}, a.base(), b.base()); }
- static Vector3f operator * (const Vector3f& a, float b) { return linalg::apply(linalg::detail::op_mul{}, a.base(), b); }
- static Vector3f operator * (const Vector3f& a, const Vector3f& b) { return linalg::apply(linalg::detail::op_mul{}, a.base(), b.base()); }
- static Vector4f operator * (const Vector4f& a, float b) { return linalg::apply(linalg::detail::op_mul{}, a.base(), b); }
- static Matrix4f operator * (const Matrix4f& a, const Matrix4f& b) { return linalg::mul(a.base(), b.base()); }
- static Quaternion4f operator * (const Quaternion4f& a, const Quaternion4f& b) { return linalg::apply(linalg::detail::op_mul{}, a.base(), b.base()); }
- static Vector2f operator - (const Vector2f& a, const Vector2f& b) { return linalg::apply(linalg::detail::op_sub{}, a.base(), b.base()); }
- static Vector2i operator - (const Vector2i& a, const Vector2i& b) { return linalg::apply(linalg::detail::op_sub{}, a.base(), b.base()); }
- static Vector3f operator - (const Vector3f& a, const Vector3f& b) { return linalg::apply(linalg::detail::op_sub{}, a.base(), b.base()); }
- static Vector2i operator / (const Vector2i& a, const Vector2i& b) { return linalg::apply(linalg::detail::op_div{}, a.base(), b.base()); }
- static Vector2f operator / (const Vector2f& a, const Vector2f& b) { return linalg::apply(linalg::detail::op_div{}, a.base(), b.base()); }
- static Vector3f operator / (const Vector3f& a, float b) { return linalg::apply(linalg::detail::op_div{}, a.base(), b); }
- static Vector3f operator / (const Vector3f& a, const Vector3f& b) { return linalg::apply(linalg::detail::op_div{}, a.base(), b.base()); }
- static Vector4f operator / (const Vector4f& a, float b) { return linalg::apply(linalg::detail::op_div{}, a.base(), b); }
- static Vector4f operator / (const Vector4f& a, const Vector4f& b) { return linalg::apply(linalg::detail::op_div{}, a.base(), b.base()); }
- static Vector2i max(const Vector2i& a, const Vector2i& b) { return linalg::apply(linalg::detail::max{}, a.base(), b.base()); }
- static Vector2i min(const Vector2i& a, const Vector2i& b) { return linalg::apply(linalg::detail::min{}, a.base(), b.base()); }
- namespace nutils {
-    template <typename Array> using entry_t = typename Array::entry_type; // Value trait to access the entry type of a array
-    template <typename Matrix> using column_t = typename Matrix::V;       // Value trait to access the column type of a matrix
-
-    template <typename T> constexpr size_t array_depth_v = T::data_depth;
-    template <> constexpr size_t array_depth_v<float> = 0;
-    template <typename T> constexpr DataType array_type_v = T::data_type;
-    template <> constexpr DataType array_type_v<float> = DataType::Float32;
-
-    static inline bool all(const bool &v) { return v; }
-    template<typename T> bool contains(const T &v, const T &lower_bound, const T &upper_bound) {
-        return ( linalg::all(gequal(v.base(),lower_bound.base())) && linalg::all(linalg::less(v.base(),upper_bound.base())) ); }
-
-    template<typename T> T max(const T &a, const T &b) { return linalg::max(a.base(), b.base()); }
-    template<typename T> T min(const T &a, const T &b) { return linalg::min(a.base(), b.base()); }
-    template<typename T> entry_t<T> hmax(const T &v) { return linalg::maxelem(v.base()); }
-    template<typename T> entry_t<T> hmin(const T &v) { return linalg::minelem(v.base()); }
-
-    template<typename T> T abs(const T &v) { return linalg::abs(v.base()); }
-    template<typename T> entry_t<T> dot(const T &a, const T &b) { return linalg::dot(a, b); }
-    template<typename T> T cross(const T &a, const T &b) { return linalg::cross(a.base(), b.base()); }
-    template<typename T> T normalize(const T &v) { return linalg::normalize(v.base()); }
-    template<typename T> float norm(const T &v) { return linalg::sqrt(linalg::dot(v.base(), v.base())); }
-    template<typename T> entry_t<T> squared_norm(const T &v) { return linalg::dot(v.base(), v.base()); }
-    template<typename V> auto sincos(const V &v) { return std::make_pair(std::sin(v), std::cos(v)); }
-
-    template <typename T> T identity() { return T(linalg::identity); }
-
-    template <typename Matrix> Matrix diag(const column_t<Matrix> &value) {
-        Matrix result;
-        for (size_t i = 0; i < Matrix::size(); ++i)
-            result[i][i] = value[i];
-        return result;
-    }
-    template <typename Matrix, typename Vector> Matrix translate(const Vector &v) { return linalg::translation_matrix(v); }
-    template <typename Matrix, typename Vector> Matrix scale(const Vector &v) { return linalg::scaling_matrix(v); }
-    template <typename Matrix, typename Vector3> Matrix rotate(const Vector3 &axis, const entry_t<Matrix> &angle) {
-        using Column = column_t<Matrix>;
-        using Value = entry_t<Matrix>;
-
-        Value sin_theta = sin(angle),
-            cos_theta = cos(angle),
-            cos_theta_m = 1.f - cos_theta;
-
-        Vector3 shuf1 = Vector3(axis.y(), axis.z(), axis.x()),
-            shuf2 = Vector3(axis.z(), axis.x(), axis.y()),
-            tmp0  = axis * axis * cos_theta_m + cos_theta,
-            tmp1  = axis * shuf1 * cos_theta_m + shuf2 * sin_theta,
-            tmp2  = axis * shuf2 * cos_theta_m - shuf1 * sin_theta;
-
-        return Matrix(
-            Column(tmp0.x(), tmp1.x(), tmp2.x(), 0.f),
-            Column(tmp2.y(), tmp0.y(), tmp1.y(), 0.f),
-            Column(tmp1.z(), tmp2.z(), tmp0.z(), 0.f),
-            Column(0.f, 0.f, 0.f, 1.f)
-        );
-    }
-
-    inline entry_t<Quaternion4f> abs(const Quaternion4f &q) { return norm(q); }
-# ifdef COMMON_COMPILATION_UNIT
-    inline template<> Quaternion4f rotate(const Vector3f &axis, const entry_t<Quaternion4f> &angle) { return linalg::rotation_quat(axis, angle); }
-# else
-    template<> Quaternion4f rotate(const Vector3f &axis, const entry_t<Quaternion4f> &angle);
-# endif
-    template<typename M> M quat_to_matrix(const Quaternion4f &q) { return linalg::rotation_matrix(q); }
-
-    template <typename Matrix> Matrix ortho(const entry_t<Matrix> &left, const entry_t<Matrix> &right,
-                                            const entry_t<Matrix> &bottom, const entry_t<Matrix> &top,
-                                            const entry_t<Matrix> &n, const entry_t<Matrix> &f) {
-        return linalg::orthographic_matrix(left, right, bottom, top, n, f, linalg::pos_z);
-    }
-    template <typename Matrix> Matrix perspective(const entry_t<Matrix> &fov,
-                                                  const entry_t<Matrix> &n, const entry_t<Matrix> &f,
-                                                  const entry_t<Matrix> &aspect = 1.f) {
-        return linalg::perspective_matrix(fov, aspect, n, f, linalg::pos_z);
-    }
-    template<typename Matrix, typename Point, typename Vector> Matrix look_at(const Point &origin, const Point &target, const Vector &up) {
-        auto dir = normalize(target - origin);
-        auto left = normalize(cross(dir, up));
-        auto new_up = cross(left, dir);
-
-        using Scalar = entry_t<Matrix>;
-
-        return Matrix(
-            column_t<Matrix>({left, Scalar(0)}),
-            column_t<Matrix>({new_up, Scalar(0)}),
-            column_t<Matrix>({-dir, Scalar(0)}),
-            column_t<Matrix>(
-                -dot(left, origin),
-                -dot(new_up, origin),
-                dot(dir, origin),
-                1.f
-            )
-        );
-    }
- }
-#endif
-
-
-/**
- * \class Color common.h nanogui/common.h
- *
- * \brief Stores an RGBA floating point color value.
- *
- * This class simply wraps around an ``Vector4f``, providing some convenient
- * methods and terminology for thinking of it as a color.  The data operates in the
- * same way as ``Vector4f``, and the following values are identical:
- *
- * \rst
- * +---------+-------------+-----------------------+-------------+
- * | Channel | Array Index | enoki Vector4f Value  | Color Value |
- * +=========+=============+=======================+=============+
- * | Red     | ``0``       | x()                   | r()         |
- * +---------+-------------+-----------------------+-------------+
- * | Green   | ``1``       | y()                   | g()         |
- * +---------+-------------+-----------------------+-------------+
- * | Blue    | ``2``       | z()                   | b()         |
- * +---------+-------------+-----------------------+-------------+
- * | Alpha   | ``3``       | w()                   | w()         |
- * +---------+-------------+-----------------------+-------------+
- *
- * .. note::
- *    The method for the alpha component is **always** ``w()``.
- * \endrst
- */
-class Color : public Vector4f {
-public:
-    using Vector4f::Vector4f;
-
-    /// Default constructor: represents black (``r, g, b, a = 0``)
-    Color() : Color(0, 0, 0, 0) { }
-
-    /// Initialize from a 4D vector
-    Color(const Vector4f &color) : Vector4f(color) { }
-
-    /**
-     * Copies (x, y, z) from the input vector, and uses the value specified by
-     * the ``alpha`` parameter for this Color object's alpha component.
-     *
-     * \param color
-     * The three dimensional float vector being copied.
-     *
-     * \param alpha
-     * The value to set this object's alpha component to.
-     */
-    Color(const Vector3f &color, float alpha)
-        : Color(color[0], color[1], color[2], alpha) { }
-
-    /**
-     * Copies (x, y, z) from the input vector, casted as floats first and then
-     * divided by ``255.0``, and uses the value specified by the ``alpha``
-     * parameter, casted to a float and divided by ``255.0`` as well, for this
-     * Color object's alpha component.
-     *
-     * \param color
-     * The three dimensional integer vector being copied, will be divided by ``255.0``.
-     *
-     * \param alpha
-     * The value to set this object's alpha component to, will be divided by ``255.0``.
-     */
-    Color(const Vector3i &color, int alpha)
-        : Color(Vector3f(color) / 255.f, alpha / 255.f) { }
-
-    /**
-     * Copies (x, y, z) from the input vector, and sets the alpha of this color
-     * to be ``1.0``.
-     *
-     * \param color
-     * The three dimensional float vector being copied.
-     */
-    Color(const Vector3f &color) : Color(color, 1.0f) {}
-
-    /**
-     * Copies (x, y, z) from the input vector, casting to floats and dividing by
-     * ``255.0``.  The alpha of this color will be set to ``1.0``.
-     *
-     * \param color
-     * The three dimensional integer vector being copied, will be divided by ``255.0``.
-     */
-    Color(const Vector3i &color)
-        : Color(Vector3f(color) / 255.f, 1.f) { }
-
-    /**
-     * Copies (x, y, z, w) from the input vector, casting to floats and dividing
-     * by ``255.0``.
-     *
-     * \param color
-     * The three dimensional integer vector being copied, will be divided by ``255.0``.
-     */
-    Color(const Vector4i &color)
-        : Color(Vector4f(color) / 255.f) { }
-
-    /**
-     * Creates the Color ``(intensity, intensity, intensity, alpha)``.
-     *
-     * \param intensity
-     * The value to be used for red, green, and blue.
-     *
-     * \param alpha
-     * The alpha component of the color.
-     */
-    Color(float intensity, float alpha)
-        : Color(Vector3f(intensity), alpha) { }
-
-    /**
-     * Creates the Color ``(intensity, intensity, intensity, alpha) / 255.0``.
-     * Values are casted to floats before division.
-     *
-     * \param intensity
-     * The value to be used for red, green, and blue, will be divided by ``255.0``.
-     *
-     * \param alpha
-     * The alpha component of the color, will be divided by ``255.0``.
-     */
-    Color(int intensity, int alpha)
-        : Color(Vector3i(intensity), alpha) { }
-
-    /**
-     * Explicit constructor: creates the Color ``(r, g, b, a)``.
-     *
-     * \param r
-     * The red component of the color.
-     *
-     * \param g
-     * The green component of the color.
-     *
-     * \param b
-     * The blue component of the color.
-     *
-     * \param a
-     * The alpha component of the color.
-     */
-    Color(float r, float g, float b, float a) : Color(Vector4f(r, g, b, a)) { }
-
-    /**
-     * Explicit constructor: creates the Color ``(r, g, b, a) / 255.0``.
-     * Values are casted to floats before division.
-     *
-     * \param r
-     * The red component of the color, will be divided by ``255.0``.
-     *
-     * \param g
-     * The green component of the color, will be divided by ``255.0``.
-     *
-     * \param b
-     * The blue component of the color, will be divided by ``255.0``.
-     *
-     * \param a
-     * The alpha component of the color, will be divided by ``255.0``.
-     */
-    Color(int r, int g, int b, int a) : Color(Vector4f((float) r, (float) g, (float) b, (float) a) / 255.f) { }
-
-    /// Return a reference to the red channel
-    float &r() { return x(); }
-    /// Return a reference to the red channel (const version)
-    const float &r() const { return x(); }
-    /// Return a reference to the green channel
-    float &g() { return y(); }
-    /// Return a reference to the green channel (const version)
-    const float &g() const { return y(); }
-    /// Return a reference to the blue channel
-    float &b() { return z(); }
-    /// Return a reference to the blue channel (const version)
-    const float &b() const { return z(); }
-
-    /**
-     * Computes the luminance as ``l = 0.299r + 0.587g + 0.144b + 0.0a``.  If
-     * the luminance is less than 0.5, white is returned.  If the luminance is
-     * greater than or equal to 0.5, black is returned.  Both returns will have
-     * an alpha component of 1.0.
-     */
-    Color contrasting_color() const {
-        float luminance = nutils::dot(*this, Color(0.299f, 0.587f, 0.144f, 0.f));
-        return Color(luminance < 0.5f ? 1.f : 0.f, 1.f);
-    }
-
-    /// Allows for conversion between this Color and NanoVG's representation.
-    inline operator const NVGcolor &() const;
-
-# ifdef DATA_INFO
-    DATA_INFO(Float32, 1);
-# endif
-};
-
 // skip the forward declarations for the docs
 #ifndef DOXYGEN_SHOULD_SKIP_THIS
 
 /* Forward declarations */
 template <typename T> class ref;
 class AdvancedGridLayout;
+struct ArrayBase;
 class BoxLayout;
 class Button;
 class CheckBox;
@@ -774,6 +244,7 @@ class ImagePanel;
 class ImageView;
 class Label;
 class Layout;
+struct MatrixBase;
 class MessageDialog;
 class Object;
 class Popup;
@@ -921,7 +392,7 @@ extern NANOGUI_EXPORT void chdir_to_bundle_parent();
  * \param c
  *     The UTF32 character to be converted.
  */
-extern NANOGUI_EXPORT std::array<char, 8> utf8(int c);
+extern NANOGUI_EXPORT std::string utf8(uint32_t c);
 
 /// Load a directory of PNG images and upload them to the GPU (suitable for use with ImagePanel)
 extern NANOGUI_EXPORT std::vector<std::pair<int, std::string>>
@@ -934,3 +405,9 @@ extern NANOGUI_EXPORT int __nanogui_get_image(NVGcontext *ctx, const std::string
                                               uint8_t *data, uint32_t size);
 
 NAMESPACE_END(nanogui)
+
+NAMESPACE_BEGIN(enoki)
+/// Base class of all Enoki arrays
+template <typename Value_, typename Derived_> struct ArrayBase;
+NAMESPACE_END(enoki)
+

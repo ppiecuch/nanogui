@@ -23,21 +23,26 @@ if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 endif()
 string(TOUPPER "${CMAKE_BUILD_TYPE}" U_CMAKE_BUILD_TYPE)
 
-if (WIN32)
-  set(NANOGUI_USE_GLAD_DEFAULT ON)
-else()
-  set(NANOGUI_USE_GLAD_DEFAULT OFF)
+set(NANOGUI_MASTER_PROJECT OFF)
+if (${CMAKE_CURRENT_SOURCE_DIR} STREQUAL ${CMAKE_SOURCE_DIR})
+  set(NANOGUI_MASTER_PROJECT ON)
 endif()
 
-set(NANOGUI_BUILD_SHARED_DEFAULT OFF)
-set(NANOGUI_USE_PYTHON_DEFAULT   ON)
-set(NANOGUI_BUILD_GLFW_DEFAULT   ON)
+if (WIN32)
+  set(NANOGUI_BUILD_GLAD_DEFAULT ON)
+else()
+  set(NANOGUI_BUILD_GLAD_DEFAULT OFF)
+endif()
+
+set(NANOGUI_BUILD_SHARED_DEFAULT ON)
+set(NANOGUI_BUILD_PYTHON_DEFAULT ON)
+set(NANOGUI_BUILD_GLFW_DEFAULT ON)
 
 if (CMAKE_CXX_COMPILER MATCHES "/em\\+\\+(-[a-zA-Z0-9.])?$")
   set(CMAKE_CXX_COMPILER_ID "Emscripten")
   set(NANOGUI_BUILD_SHARED_DEFAULT OFF)
-  set(NANOGUI_USE_PYTHON_DEFAULT   OFF)
-  set(NANOGUI_USE_GLAD_DEFAULT     OFF)
+  set(NANOGUI_BUILD_PYTHON_DEFAULT OFF)
+  set(NANOGUI_BUILD_GLAD_DEFAULT   OFF)
   set(NANOGUI_BUILD_GLFW_DEFAULT   OFF)
 
   set(CMAKE_STATIC_LIBRARY_SUFFIX ".bc")
@@ -48,12 +53,12 @@ if (CMAKE_CXX_COMPILER MATCHES "/em\\+\\+(-[a-zA-Z0-9.])?$")
   endif()
 endif()
 
-option(NANOGUI_BUILD_EXAMPLES "Build NanoGUI example application?" ON)
-option(NANOGUI_BUILD_SHARED   "Build NanoGUI as a shared library?" ${NANOGUI_BUILD_SHARED_DEFAULT})
-option(NANOGUI_BUILD_PYTHON   "Build a Python plugin for NanoGUI?" ${NANOGUI_USE_PYTHON_DEFAULT})
-option(NANOGUI_USE_GLAD       "Use Glad OpenGL loader library?" ${NANOGUI_USE_GLAD_DEFAULT})
-option(NANOGUI_BUILD_GLFW     "Build GLFW" ${NANOGUI_BUILD_GLFW_DEFAULT})
-option(NANOGUI_INSTALL        "Install NanoGUI on `make install`?" ON)
+option(NANOGUI_BUILD_EXAMPLES            "Build NanoGUI example application?" ON)
+option(NANOGUI_BUILD_SHARED              "Build NanoGUI as a shared library?" ${NANOGUI_BUILD_SHARED_DEFAULT})
+option(NANOGUI_BUILD_PYTHON              "Build a Python plugin for NanoGUI?" ${NANOGUI_BUILD_PYTHON_DEFAULT})
+option(NANOGUI_BUILD_GLAD                "Build GLAD OpenGL loader library? (needed on Windows)" ${NANOGUI_BUILD_GLAD_DEFAULT})
+option(NANOGUI_BUILD_GLFW                "Build GLFW?" ${NANOGUI_BUILD_GLFW_DEFAULT})
+option(NANOGUI_INSTALL                   "Install NanoGUI on `make install`?" ON)
 
 if (NOT NANOGUI_BACKEND)
   if (CMAKE_SYSTEM_PROCESSOR MATCHES "armv7" OR
@@ -71,16 +76,26 @@ endif()
 
 set_property(CACHE NANOGUI_BACKEND PROPERTY STRINGS "OpenGL" "GLES 2" "GLES 3" "Metal")
 
-set(NANOGUI_PYTHON_VERSION "" CACHE STRING "Python version to use for compiling the Python plugin")
-
-# Allow overriding the pybind11 and Enoki version used to compile NanoGUI
-set(ENOKI_PYBIND11_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/enoki/ext/pybind11"
-  CACHE STRING "Path containing the 'pybind11' library used to compile Enoki.")
-set(NANOGUI_PYBIND11_DIR "${ENOKI_PYBIND11_DIR}"
+# Allow overriding the pybind11 library used to compile NanoGUI
+set(NANOGUI_PYBIND11_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/pybind11"
   CACHE STRING "Path containing the 'pybind11' library used to compile nanogui.")
-set(NANOGUI_ENOKI_DIR "${CMAKE_CURRENT_SOURCE_DIR}/ext/enoki"
-  CACHE STRING "Path containing the 'enoki' library used to compile nanogui.")
-mark_as_advanced(ENOKI_PYBIND11_DIR NANOGUI_PYBIND11_DIR NANOGUI_ENOKI_DIR)
+mark_as_advanced(NANOGUI_PYBIND11_DIR)
+
+if (NANOGUI_BUILD_PYTHON)
+  # Try to autodetect Python (can be overridden manually if needed)
+  list(APPEND CMAKE_MODULE_PATH "${NANOGUI_PYBIND11_DIR}/tools")
+  set(Python_ADDITIONAL_VERSIONS 3.9 3.8 3.7 3.6 3.5 3.4)
+  find_package(PythonLibsNew)
+  if (NOT PYTHONLIBS_FOUND)
+    # Python not found -- disable the plugin
+    set(NANOGUI_BUILD_PYTHON OFF CACHE BOOL "Build a Python plugin for NanoGUI?" FORCE)
+    message(WARNING "NanoGUI: not building the Python plugin (could not find Python!)")
+  else()
+    message(STATUS "NanoGUI: building the Python plugin.")
+  endif()
+else()
+  message(STATUS "NanoGUI: not building the Python plugin.")
+endif()
 
 # Required libraries, flags, and include files for compiling and linking against nanogui (all targets)
 set(NANOGUI_EXTRA_LIBS "")
@@ -94,11 +109,6 @@ set(LIBNANOGUI_PYTHON_EXTRA_SOURCE "")
 
 if (APPLE AND NANOGUI_BUILD_SHARED)
   set(CMAKE_MACOSX_RPATH ON)
-endif()
-
-set(NANOGUI_MASTER_PROJECT OFF)
-if (${CMAKE_CURRENT_SOURCE_DIR} STREQUAL ${CMAKE_SOURCE_DIR})
-  set(NANOGUI_MASTER_PROJECT ON)
 endif()
 
 if (EXISTS /opt/vc/include)
@@ -126,11 +136,6 @@ macro(CHECK_CXX_COMPILER_AND_LINKER_FLAGS _RESULT _CXX_FLAGS _LINKER_FLAGS)
   set(CMAKE_REQUIRED_FLAGS "")
   set(CMAKE_REQUIRED_LIBRARIES "")
 endmacro()
-
-add_subdirectory("${NANOGUI_ENOKI_DIR}" "ext_build/enoki")
-
-enoki_set_compile_flags()
-enoki_set_native_flags()
 
 # Python support: add NANOGUI_PYTHON flag to all targets
 if (NANOGUI_BUILD_PYTHON)
@@ -202,22 +207,10 @@ elseif (CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "
 endif()
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "^(GNU|Clang|Emscripten|Intel)$")
-  CHECK_CXX_COMPILER_FLAG("-std=c++17" HAS_CPP17_FLAG)
-
-  if (HAS_CPP17_FLAG)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
-  else()
-    CHECK_CXX_COMPILER_FLAG("-std=c++1z" HAS_CPP1Z_FLAG)
-    if (HAS_CPP1Z_FLAG)
-      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1z")
-    else()
-      message(FATAL_ERROR "Unsupported compiler -- nanogui requires C++17 support!")
-    endif()
-  endif()
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 elseif(MSVC)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++17")
 endif()
-
 
 # Various optimizations for shared library release builds
 if (NANOGUI_BUILD_SHARED)
@@ -315,10 +308,10 @@ if (NANOGUI_BUILD_GLFW)
     GLFW_BUILD_DOCS GLFW_BUILD_EXAMPLES GLFW_BUILD_INSTALL GLFW_BUILD_TESTS
     GLFW_DOCUMENT_INTERNALS GLFW_INSTALL GLFW_USE_CHDIR GLFW_USE_MENUBAR
     GLFW_USE_OSMESA GLFW_VULKAN_STATIC GLFW_USE_RETINA GLFW_USE_MIR
-  )
+    BUILD_SHARED_LIBS)
 endif()
 
-if (NANOGUI_USE_GLAD)
+if (NANOGUI_BUILD_GLAD)
   # Build and include GLAD on Windows
   list(APPEND LIBNANOGUI_EXTRA_SOURCE
    "${CMAKE_CURRENT_SOURCE_DIR}/ext/glad/src/glad.c"
@@ -502,12 +495,12 @@ add_library(nanogui-obj OBJECT
   include/nanogui/texture.h src/texture.cpp
   include/nanogui/shader.h src/shader.cpp
   include/nanogui/imageview.h src/imageview.cpp
+  include/nanogui/traits.h src/traits.cpp
   include/nanogui/renderpass.h
   include/nanogui/formhelper.h
   include/nanogui/icons.h
   include/nanogui/toolbutton.h
   include/nanogui/opengl.h
-  include/nanogui/arcball.h
   include/nanogui/nanogui.h
 )
 
@@ -537,13 +530,15 @@ endif()
 # Compile/link flags for NanoGUI
 set_property(TARGET nanogui-obj APPEND PROPERTY COMPILE_DEFINITIONS "NANOGUI_BUILD;NVG_BUILD;NVG_STB_IMAGE_IMPLEMENTATION")
 
-if (NANOGUI_USE_GLAD AND NANOGUI_BUILD_SHARED)
+if (NANOGUI_BUILD_GLAD AND NANOGUI_BUILD_SHARED)
   set_property(TARGET nanogui-obj APPEND PROPERTY COMPILE_DEFINITIONS
     "GLAD_GLAPI_EXPORT;GLAD_GLAPI_EXPORT_BUILD")
 endif()
 
 if (NANOGUI_BUILD_SHARED)
-  target_link_libraries(nanogui ${NANOGUI_EXTRA_LIBS})
+  target_link_libraries(nanogui PRIVATE ${NANOGUI_EXTRA_LIBS})
+else()
+  target_link_libraries(nanogui PUBLIC ${NANOGUI_EXTRA_LIBS})
 endif()
 
 if (NANOGUI_INSTALL)
@@ -585,37 +580,22 @@ if (NANOGUI_BUILD_EXAMPLES)
   add_executable(example3      src/example3.cpp)
   add_executable(example4      src/example4.cpp)
   add_executable(example_icons src/example_icons.cpp)
-  target_link_libraries(example1      nanogui ${NANOGUI_EXTRA_LIBS})
-  target_link_libraries(example2      nanogui ${NANOGUI_EXTRA_LIBS})
-  target_link_libraries(example3      nanogui ${NANOGUI_EXTRA_LIBS})
-  target_link_libraries(example4      nanogui ${NANOGUI_EXTRA_LIBS})
-  target_link_libraries(example_icons nanogui ${NANOGUI_EXTRA_LIBS})
+
+  target_link_libraries(example1      nanogui)
+  target_link_libraries(example2      nanogui)
+  target_link_libraries(example3      nanogui ${opengl_library})
+  target_link_libraries(example4      nanogui)
+  target_link_libraries(example_icons nanogui)
 
   # Copy icons for example application
   file(COPY resources/icons DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 endif()
 
-if (NANOGUI_BUILD_PYTHON)
-  if (APPLE OR CMAKE_SYSTEM MATCHES "Linux")
-    # Include coroutine support for running the mainloop in detached mode
-    add_definitions(-DCORO_SJLJ)
-    include_directories(ext/coro)
-    list(APPEND LIBNANOGUI_PYTHON_EXTRA_SOURCE ext/coro/coro.c)
-  endif()
-
-  # Try to autodetect Python (can be overridden manually if needed)
-  list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/ext/enoki/ext/pybind11/tools")
-  set(Python_ADDITIONAL_VERSIONS 3.7 3.6 3.5 3.4)
-  find_package(PythonLibsNew ${NANOGUI_PYTHON_VERSION})
-  if (NOT PYTHONLIBS_FOUND)
-    # Python not found -- disable the plugin
-    set(NANOGUI_BUILD_PYTHON OFF CACHE BOOL "Build a Python plugin for NanoGUI?" FORCE)
-    message(WARNING "NanoGUI: not building the Python plugin!")
-  else()
-    message(STATUS "NanoGUI: building the Python plugin.")
-  endif()
-else()
-  message(STATUS "NanoGUI: not building the Python plugin.")
+if (NANOGUI_BUILD_PYTHON AND (APPLE OR CMAKE_SYSTEM MATCHES "Linux"))
+  # Include coroutine support for running the mainloop in detached mode
+  add_definitions(-DCORO_SJLJ)
+  include_directories(ext/coro)
+  list(APPEND LIBNANOGUI_PYTHON_EXTRA_SOURCE ext/coro/coro.c)
 endif()
 
 if (NANOGUI_BUILD_PYTHON)
@@ -625,7 +605,7 @@ if (NANOGUI_BUILD_PYTHON)
     set_target_properties(glfw_objects PROPERTIES POSITION_INDEPENDENT_CODE ON)
   endif()
 
-  include_directories("${NANOGUI_PYBIND11_DIR}/include" ${PYTHON_INCLUDE_DIR})
+  include_directories("${NANOGUI_PYBIND11_DIR}/include" ${PYTHON_INCLUDE_DIRS})
 
   add_library(nanogui-python-obj OBJECT
     python/main.cpp
@@ -645,13 +625,14 @@ if (NANOGUI_BUILD_PYTHON)
     python/canvas.cpp
     python/nanovg.cpp
     python/render.cpp
+    python/vector.cpp
     python/python.h python/py_doc.h
     ${LIBNANOGUI_PYTHON_EXTRA_SOURCE})
 
   add_library(nanogui-python SHARED $<TARGET_OBJECTS:nanogui-python-obj>)
   set_property(TARGET nanogui-python-obj PROPERTY POSITION_INDEPENDENT_CODE ON)
   set_target_properties(nanogui-python PROPERTIES OUTPUT_NAME "nanogui")
-  target_link_libraries(nanogui-python nanogui ${NANOGUI_EXTRA_LIBS})
+  target_link_libraries(nanogui-python nanogui)
 
   # Quench warnings on GCC
   if (CMAKE_COMPILER_IS_GNUCC)
@@ -659,8 +640,9 @@ if (NANOGUI_BUILD_PYTHON)
   endif()
 
   if (${CMAKE_CURRENT_SOURCE_DIR} STREQUAL ${CMAKE_CURRENT_BINARY_DIR})
-  set_target_properties(nanogui-python PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/python)
+    set_target_properties(nanogui-python PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/python)
   endif()
+
   # The prefix and extension are provided by FindPythonLibsNew.cmake
   set_target_properties(nanogui-python PROPERTIES PREFIX "${PYTHON_MODULE_PREFIX}")
   set_target_properties(nanogui-python PROPERTIES SUFFIX "${PYTHON_MODULE_EXTENSION}")

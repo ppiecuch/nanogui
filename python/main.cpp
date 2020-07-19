@@ -37,6 +37,7 @@ namespace {
 }
 #endif
 
+extern void register_vector(py::module &m);
 extern void register_glfw(py::module &m);
 extern void register_entypo(py::module &m);
 extern void register_eigen(py::module &m);
@@ -248,6 +249,7 @@ PYBIND11_MODULE(nanogui, m) {
         .value("Horizontal", Orientation::Horizontal)
         .value("Vertical", Orientation::Vertical);
 
+    register_vector(m);
     register_glfw(m);
     register_entypo(m);
     register_eigen(m);

@@ -14,9 +14,6 @@
 #include <nanogui/colorwheel.h>
 #include <nanogui/theme.h>
 #include <nanogui/opengl.h>
-#ifdef WITH_EENOKI_LIB
-# include <enoki/matrix.h>
-#endif
 
 NAMESPACE_BEGIN(nanogui)
 
@@ -187,9 +184,11 @@ ColorWheel::Region ColorWheel::adjust_position(const Vector2i &p, Region conside
         return OuterCircle;
     }
 
-    auto sc = nutils::sincos(-m_hue * 2 * NVG_PI);
-    Vector2f xy(sc.second * x - sc.first * y,
-                sc.first * x + sc.second * y);
+    float a = -m_hue * 2 * NVG_PI,
+          sin_a = std::sin(a),
+          cos_a = std::cos(a);
+    Vector2f xy(cos_a * x - sin_a * y,
+                sin_a * x + cos_a * y);
 
     float r = r0 - 6;
     float l0 = (r-xy.x() + std::sqrt(3) * xy.y()) / (3*r);

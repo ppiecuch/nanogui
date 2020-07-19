@@ -1,16 +1,8 @@
 
 # ngui_with_qtgl   - force to add qtgl.cpp wrappr
-# ngui_with_enoki
-# ngui_with_eigen
-# ngui_with_linalg
 # ngui_with_nfd
 
-ngui_with_enoki|ngui_with_eigen|ngui_with_linalg {
-    # use provided configuration
-} else {
-    # default library with least dependencies
-    CONFIG *= ngui_with_linalg
-}
+CONFIG *= c++14
 
 NGUIRT = $$PWD/..
 
@@ -19,6 +11,7 @@ INCLUDEPATH += $$NGUIRT/include $$NGUIRT/resources $$NGUIRT/ext $$NGUIRT/ext/qt
 SOURCES += \
   $$NGUIRT/resources/nanogui_resources.cpp \
   $$NGUIRT/src/common.cpp \
+  $$NGUIRT/src/traits.cpp \
   $$NGUIRT/src/canvas.cpp \
   $$NGUIRT/src/widget.cpp \
   $$NGUIRT/src/theme.cpp \
@@ -63,6 +56,8 @@ HEADERS += \
     $$NGUIRT/resources/nanogui_resources.h \
     $$NGUIRT/ext/qt/qtapp.h \
     $$NGUIRT/include/nanogui/common.h \
+    $$NGUIRT/include/nanogui/traits.h \
+    $$NGUIRT/include/nanogui/vector.h \
     $$NGUIRT/include/nanogui/canvas.h \
     $$NGUIRT/include/nanogui/widget.h \
     $$NGUIRT/include/nanogui/theme.h \
@@ -92,19 +87,6 @@ HEADERS += \
     $$NGUIRT/include/nanogui/texture.h \
     $$NGUIRT/include/nanogui/opengl.h \
     $$NGUIRT/include/nanogui/nanogui.h
-
-CONFIG(ngui_with_enoki) {
-    DEFINES += WITH_ENOKI_LIB
-    INCLUDEPATH += $$NGUIRT/ext/enoki/include
-    CONFIG *= c++17
-} else:CONFIG(ngui_with_eigen) {
-    DEFINES += WITH_EIGEN_LIB
-    INCLUDEPATH += $$NGUIRT/ext/eigen/include
-} else:CONFIG(ngui_with_linalg) {
-    DEFINES += WITH_LINALG_LIB
-    INCLUDEPATH += $$NGUIRT/ext/algebra
-    CONFIG *= c++14
-}
 
 CONFIG(ngui_with_nfd) {
     HEADERS += \
