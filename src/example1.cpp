@@ -39,6 +39,14 @@
 #include <nanogui/renderpass.h>
 #include <iostream>
 #include <memory>
+
+#define STB_IMAGE_STATIC
+#define STB_IMAGE_IMPLEMENTATION
+#if defined(_MSC_VER)
+#  pragma warning (disable: 4505) // don't warn about dead code in stb_image.h
+#elif defined(__GNUC__)
+#   pragma GCC diagnostic ignored "-Wunused-function"
+#endif
 #include <stb_image.h>
 
 #ifdef QT_GUI_LIB

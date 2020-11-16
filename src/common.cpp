@@ -10,7 +10,9 @@
 */
 
 #if defined(_WIN32)
-#  define NOMINMAX
+#  ifndef NOMINMAX
+#  define NOMINMAX 1
+#  endif
 #  include <windows.h>
 #endif
 

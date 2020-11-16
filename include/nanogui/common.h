@@ -102,9 +102,9 @@
 #define NANOGUI_FORCE_DISCRETE_GPU()
 #endif
 
-#if defined(_WIN32)
+#if defined(_MSC_VER)
 #  if defined(NANOGUI_BUILD)
-/* Quench a few warnings on when compiling NanoGUI on Windows */
+/* Quench a few warnings on when compiling NanoGUI on Windows with MSVC */
 #    pragma warning(disable : 4127) // warning C4127: conditional expression is constant
 #    pragma warning(disable : 4244) // warning C4244: conversion from X to Y, possible loss of data
 #  endif
@@ -228,7 +228,6 @@ enum class Cursor {
 /* Forward declarations */
 template <typename T> class ref;
 class AdvancedGridLayout;
-struct ArrayBase;
 class BoxLayout;
 class Button;
 class CheckBox;
@@ -244,7 +243,6 @@ class ImagePanel;
 class ImageView;
 class Label;
 class Layout;
-struct MatrixBase;
 class MessageDialog;
 class Object;
 class Popup;
@@ -408,6 +406,6 @@ NAMESPACE_END(nanogui)
 
 NAMESPACE_BEGIN(enoki)
 /// Base class of all Enoki arrays
-template <typename Value_, typename Derived_> struct ArrayBase;
+template <typename Value_, bool IsMask_, typename Derived_> struct ArrayBase;
 NAMESPACE_END(enoki)
 
